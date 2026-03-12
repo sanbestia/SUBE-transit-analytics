@@ -1,0 +1,26 @@
+[project]
+name = "buenos-aires-public-transport-usage-explorer"
+version = "0.1.0"
+description = "ETL pipeline and dashboard for Argentina's SUBE public transit data"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "pandas>=2.0.0",
+    "duckdb>=0.10.0",
+    "requests>=2.31.0",
+    "streamlit>=1.32.0",
+    "plotly>=5.20.0",
+    "statsmodels>=0.14.0",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

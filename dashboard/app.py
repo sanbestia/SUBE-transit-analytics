@@ -95,8 +95,10 @@ def add_event_annotations(fig, events=EVENTS):
     """Add vertical lines for known events."""
     for ev in events:
         fig.add_vline(
-            x=ev["date"], line_dash="dot",
-            line_color=ev["color"], opacity=0.5,
+            x=pd.Timestamp(ev["date"]).timestamp() * 1000,  # convert to ms epoch
+            line_dash="dot",
+            line_color=ev["color"],
+            opacity=0.5,
             annotation_text=ev["label"],
             annotation_position="top right",
             annotation_font_size=10,
@@ -135,7 +137,7 @@ with st.sidebar:
     show_decomp = st.toggle("Mostrar descomposición STL", value=False)
 
     st.divider()
-    if st.button("🔄 Actualizar datos", use_container_width=True):
+    if st.button("🔄 Actualizar datos", width='stretch'):
         st.cache_data.clear()
         st.rerun()
 
@@ -232,7 +234,7 @@ with tab1:
         fig = add_event_annotations(fig)
 
     fig.update_layout(height=500, legend_title="Modo", hovermode="x unified")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 # ━━ Tab 2: Modal split ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -255,7 +257,7 @@ with tab2:
     if show_events:
         fig2 = add_event_annotations(fig2)
     fig2.update_layout(height=450, yaxis_ticksuffix="%", hovermode="x unified")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width='stretch')
 
 
 # ━━ Tab 3: YoY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -278,7 +280,7 @@ with tab3:
     )
     fig3.add_hline(y=0, line_color="black", line_width=1)
     fig3.update_layout(height=450, yaxis_ticksuffix="%", hovermode="x unified")
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, width='stretch')
 
 
 # ━━ Tab 4: Heatmap ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -299,7 +301,7 @@ with tab4:
         aspect="auto",
     )
     fig4.update_layout(height=350)
-    st.plotly_chart(fig4, use_container_width=True)
+    st.plotly_chart(fig4, width='stretch')
 
 
 # ━━ Tab 5: STL decomposition ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -360,7 +362,7 @@ with tab5:
 
                     fig5.update_layout(height=550, template="plotly_white",
                                        hovermode="x unified", legend_title="Componente")
-                    st.plotly_chart(fig5, use_container_width=True)
+                    st.plotly_chart(fig5, width='stretch')
 
                     # Show anomaly table
                     if not anom.empty:
@@ -374,7 +376,7 @@ with tab5:
                                 "z_score": "Z-score",
                                 "event_label": "Evento conocido"
                             }),
-                            use_container_width=True,
+                            width='stretch',
                         )
             except ImportError:
                 st.error("statsmodels no instalado. Ejecuta: `pip install statsmodels`")

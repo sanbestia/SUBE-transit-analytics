@@ -20,10 +20,11 @@ FIRST_YEAR     = 2020          # earliest year with reliable daily data
 
 # ── Transport modes (as they appear in the raw data) ──────────────────────
 TRANSPORT_MODES = {
-    "COLECTIVO":  "Colectivo (Bus)",
-    "TREN":       "Tren",
-    "SUBTE":      "Subte",
-    "PREMETRO":   "Premetro",
+    "COLECTIVO": "Colectivo (Bus)",
+    "TREN":      "Tren",
+    "SUBTE":     "Subte",
+    "PREMETRO":  "Premetro",
+    "LANCHAS":   "Lanchas (Ferry)",
 }
 
 # ── Known anomaly events for annotation in charts ─────────────────────────

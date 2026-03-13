@@ -1,5 +1,5 @@
 def main():
-    print("Hello from buenos-aires-public-transport-usage-explorer!")
+    print("Hello from SUBE-transit-analytics!")
 
 
 if __name__ == "__main__":

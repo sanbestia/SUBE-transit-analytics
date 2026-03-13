@@ -1,5 +1,5 @@
 [project]
-name = "buenos-aires-public-transport-usage-explorer"
+name = "SUBE-transit-analytics"
 version = "0.1.0"
 description = "ETL pipeline and dashboard for Argentina's SUBE public transit data"
 readme = "README.md"

@@ -1,0 +1,77 @@
+# events.yaml — Key historical events for chart annotations.
+# Used to draw vertical lines on time series charts in the dashboard.
+# Only the most significant events are listed to avoid visual clutter.
+# For the full fare hike chronology, see fare_hikes.yaml.
+#
+# Fields:
+#   date     : YYYY-MM-DD
+#   label_es : Spanish label
+#   label_en : English label
+#   color    : line color (red, orange, green, purple, blue, gray)
+
+# ── COVID ──────────────────────────────────────────────────────────────────────
+
+- date: "2020-03-20"
+  label_es: "ASPO (cuarentena estricta)"
+  label_en: "ASPO (strict lockdown)"
+  color: red
+
+- date: "2020-11-01"
+  label_es: "Inicio DISPO"
+  label_en: "DISPO begins"
+  color: orange
+
+- date: "2021-04-09"
+  label_es: "ASPO 2 (2da cuarentena)"
+  label_en: "ASPO 2 (2nd lockdown)"
+  color: red
+
+- date: "2022-03-01"
+  label_es: "Recuperación post-COVID"
+  label_en: "Post-COVID recovery"
+  color: green
+
+# ── MACRO SHOCKS ───────────────────────────────────────────────────────────────
+# Inflation Argentina: 36% (2020), 51% (2021), 95% (2022), 211% (2023)
+# These are the largest discrete devaluation events in the SUBE data window.
+
+- date: "2022-07-01"
+  label_es: "Renuncia Guzmán — crisis cambiaria"
+  label_en: "Guzmán resigns — FX crisis"
+  color: gray
+  notes: "Dólar blue hit record $340 by end of Jul 2022. Batakis in, then Massa in."
+
+- date: "2023-08-14"
+  label_es: "Devaluación post-PASO (+22%)"
+  label_en: "Post-PASO devaluation (+22%)"
+  color: gray
+  notes: "Massa devalued official rate 21.8% to $350 the day after the PASO result."
+
+- date: "2023-12-13"
+  label_es: "Devaluación Milei (+118%) + fin subsidios"
+  label_en: "Milei devaluation (+118%) + subsidy cuts"
+  color: purple
+  notes: "Official rate jumped from $366 to $800 in one day. Largest devaluation since 1989 hyperinflation. Triggered the Jan-Feb 2024 fare shock sequence."
+
+# ── FARE POLICY REGIME CHANGES ─────────────────────────────────────────────────
+# Single annotation per regime change — details are in fare_hikes.yaml.
+
+- date: "2022-03-01"
+  label_es: "Fin congelamiento tarifario (3 años)"
+  label_en: "End of 3-year fare freeze"
+  color: blue
+  notes: "Fares had been frozen since Mar 2019. Monthly CPI indexation begins."
+
+- date: "2024-01-15"
+  label_es: "Inicio shock tarifario Milei"
+  label_en: "Milei fare shock begins"
+  color: purple
+  notes: "+45% Jan 15, +66% Feb 6. Interior Fund eliminated Feb 2024."
+
+# ── CEPO CAMBIARIO ─────────────────────────────────────────────────────────────
+
+- date: "2025-04-14"
+  label_es: "Salida del cepo cambiario"
+  label_en: "Capital controls lifted"
+  color: blue
+  notes: "Milei lifts most FX controls. Peso floats within $1000-$1400 band."

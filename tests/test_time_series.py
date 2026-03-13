@@ -159,7 +159,7 @@ class TestDetectAnomalies:
 
     def test_row_count_matches_input(self):
         residuals = self._normal_residuals(n=100)
-        result = detect_anomalies(residuals)
+        result = detect_anomalies(residuals, lang="es")
         assert len(result) == 100
 
     def test_detects_obvious_spike(self):
@@ -183,7 +183,7 @@ class TestDetectAnomalies:
     def test_z_scores_computed_correctly(self):
         idx = pd.date_range("2022-01-01", periods=5, freq="D")
         residuals = pd.Series([0.0, 1.0, 2.0, 3.0, 4.0], index=idx)
-        result = detect_anomalies(residuals)
+        result = detect_anomalies(residuals, lang="es")
         mean = residuals.mean()
         std  = residuals.std()
         expected_z = (residuals.iloc[0] - mean) / std
@@ -196,15 +196,15 @@ class TestDetectAnomalies:
         idx = pd.date_range(event_date - pd.Timedelta(days=5),
                             event_date + pd.Timedelta(days=5), freq="D")
         residuals = pd.Series(np.ones(len(idx)) * 10, index=idx)
-        result = detect_anomalies(residuals)
+        result = detect_anomalies(residuals, lang="es")
         row = result[result["fecha"] == event_date]
         if not row.empty:
-            assert row["event_label"].iloc[0] == EVENTS[0]["label"]
+            assert row["event_label"].iloc[0] == EVENTS[0]["label_es"]
 
     def test_non_event_dates_have_empty_label(self):
         idx = pd.date_range("2000-01-01", periods=10, freq="D")
         residuals = pd.Series(np.zeros(10), index=idx)
-        result = detect_anomalies(residuals)
+        result = detect_anomalies(residuals, lang="es")
         assert (result["event_label"] == "").all()
 
 

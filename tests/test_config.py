@@ -52,9 +52,10 @@ class TestSourceConfig:
 
 
 class TestTransportModes:
-    def test_all_expected_modes_present(self):
-        for mode in ("COLECTIVO", "TREN", "SUBTE", "PREMETRO"):
-            assert mode in TRANSPORT_MODES
+    def test_dashboard_modes_present_in_transport_modes(self):
+        from config import DASHBOARD_MODES
+        for mode in DASHBOARD_MODES:
+            assert mode in TRANSPORT_MODES, f"Dashboard mode '{mode}' missing from TRANSPORT_MODES"
 
     def test_modes_are_uppercase_keys(self):
         for key in TRANSPORT_MODES:
@@ -76,7 +77,8 @@ class TestEvents:
     def test_each_event_has_required_keys(self):
         for event in EVENTS:
             assert "date" in event, f"Event missing 'date': {event}"
-            assert "label" in event, f"Event missing 'label': {event}"
+            assert "label_es" in event, f"Event missing 'label_es': {event}"
+            assert "label_en" in event, f"Event missing 'label_en': {event}"
             assert "color" in event, f"Event missing 'color': {event}"
 
     def test_event_dates_are_valid(self):

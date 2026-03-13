@@ -1,0 +1,135 @@
+# fare_hikes.yaml — History of SUBE fare changes since 2019.
+# Used as regressors in the ML forecasting model and for ITS analysis.
+#
+# Sources:
+#   - Boletín Oficial, Secretaría de Transporte de la Nación
+#   - Resolución 1017/2022 (Ministerio de Transporte)
+#   - Resolución 501/2023 (congelamiento post-PASO)
+#   - Chequeado, Infobae, Ambito, Página12
+#
+# Scope values:
+#   national   : lines under national jurisdiction (104 lines crossing CABA/PBA + interior cities)
+#   amba       : AMBA national lines only
+#   amba_local : CABA and PBA local lines only (split from national from Mar 2025)
+#   interior   : interior provinces (approximated — each province has its own schedule)
+#
+# Magnitude: approximate % increase in minimum fare (nominal).
+#
+# ── PERIOD NOTES ──────────────────────────────────────────────────────────────
+# 2019-03 → 2022-02: FARES FROZEN. Macri froze fares before leaving office (Sep
+#   2019). Alberto Fernández continued the freeze through the pandemic. This is
+#   not a data gap — fares genuinely did not change for nearly 3 years.
+#
+# 2022-03 → 2023-07: MONTHLY CPI INDEXATION. Resolution 1017/2022 established
+#   monthly increases tied to the Gran Buenos Aires CPI (INDEC). Magnitude column
+#   reflects approximate monthly average (~6-9% per month in this period).
+#   Interior cities followed similar monthly schedules under provincial authority.
+#
+# 2023-08 → 2023-12: FROZEN AGAIN. Resolution 501/2023 (Aug 30, two weeks after
+#   PASO) froze fares for the rest of the Fernández administration.
+#
+# 2024-01 → present: MILEI SHOCK + GRADUAL UPDATES. See individual entries.
+# Interior fares jumped sharply in Feb 2024 when the Fondo de Compensación del
+# Interior was eliminated. Subsequent interior hikes vary by province.
+
+# ── 2022: END OF THE GREAT FREEZE ─────────────────────────────────────────────
+
+- date: "2022-03-01"
+  scope: national
+  magnitude: 30
+  label_es: "Fin del congelamiento — indexación mensual CPI"
+  label_en: "Freeze ends — monthly CPI indexation begins"
+  notes: "Resolution 1017/2022. ~6-9% per month through Jul 2023. Magnitude is approx. first-month catch-up."
+
+# ── 2023: INDEXATION SUSPENDED PRE-ELECTION ────────────────────────────────────
+
+- date: "2023-08-01"
+  scope: national
+  magnitude: 0
+  label_es: "Congelamiento tarifario (Res. 501/2023, post-PASO)"
+  label_en: "Fare freeze — post-PASO election halt (Res. 501/2023)"
+  notes: "Fares frozen Aug–Dec 2023. Magnitude 0 marks the structural break, not a hike."
+
+# ── 2024: MILEI SHOCK SEQUENCE ────────────────────────────────────────────────
+
+- date: "2024-01-15"
+  scope: national
+  magnitude: 45
+  label_es: "1er aumento Milei — acuerdo UTA/empresas (+45%)"
+  label_en: "1st Milei hike — UTA/operators agreement (+45%)"
+  notes: "Applied Jan 15 (delayed from Jan 1 due to SUBE system update lag)."
+
+- date: "2024-02-06"
+  scope: national
+  magnitude: 66
+  label_es: "2do aumento Milei — eliminación subsidios (+66%)"
+  label_en: "2nd Milei hike — subsidy elimination (+66%)"
+  notes: "Also triggered interior fare jump: Fondo de Compensación del Interior eliminated. Interior provinces absorbed the shock independently."
+
+- date: "2024-08-12"
+  scope: amba
+  magnitude: 37
+  label_es: "Aumento agosto AMBA (+37%)"
+  label_en: "Aug 2024 AMBA hike (+37%)"
+  notes: "National lines only. After this, national lines frozen until May 2025 while CABA/PBA continued monthly updates."
+
+- date: "2024-11-18"
+  scope: amba
+  magnitude: 10
+  label_es: "Aumento noviembre AMBA (+10%)"
+  label_en: "Nov 2024 AMBA hike (+10%)"
+
+# ── 2025: SPLIT JURISDICTION + STAGED NATIONAL UPDATES ────────────────────────
+
+- date: "2025-03-01"
+  scope: amba_local
+  magnitude: 10
+  label_es: "CABA/PBA: +10% + indexación mensual CPI+2%"
+  label_en: "CABA/PBA: +10% + monthly CPI+2% indexation"
+  notes: "From this date CABA and PBA local lines split from national jurisdiction and apply monthly updates (CPI + 2pp). Continuous from here, not discrete steps."
+
+- date: "2025-05-23"
+  scope: national
+  magnitude: 7
+  label_es: "Aumento nacional (+21.5% en 3 etapas) — etapa 1"
+  label_en: "National hike (+21.5% in 3 stages) — stage 1"
+  notes: "National lines had been frozen since Aug 2024. This is 9 months of accumulated CPI divided into 3 monthly tranches."
+
+- date: "2025-06-18"
+  scope: national
+  magnitude: 7
+  label_es: "Aumento nacional — etapa 2"
+  label_en: "National hike — stage 2"
+
+- date: "2025-07-16"
+  scope: national
+  magnitude: 7
+  label_es: "Aumento nacional — etapa 3"
+  label_en: "National hike — stage 3"
+
+- date: "2025-11-17"
+  scope: national
+  magnitude: 10
+  label_es: "Aumento noviembre 2025 (+10%)"
+  label_en: "Nov 2025 hike (+10%)"
+
+# ── 2026 ──────────────────────────────────────────────────────────────────────
+
+- date: "2026-02-18"
+  scope: national
+  magnitude: 31
+  label_es: "Aumento febrero 2026 (+31%) — etapa 1"
+  label_en: "Feb 2026 hike (+31%) — stage 1"
+  notes: "Two-stage update: Feb 18 and Mar 16. Boleto mínimo: $650 → $700 (Mar)."
+
+- date: "2026-03-01"
+  scope: amba_local
+  magnitude: 5
+  label_es: "Actualización mensual CABA/PBA — marzo 2026"
+  label_en: "CABA/PBA monthly update — Mar 2026"
+
+- date: "2026-03-16"
+  scope: national
+  magnitude: 8
+  label_es: "Aumento nacional — etapa 2 marzo 2026"
+  label_en: "National hike — Mar 2026 stage 2"

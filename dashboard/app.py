@@ -27,6 +27,19 @@ st.set_page_config(
 
 # ── Translations ───────────────────────────────────────────────────────────
 from dashboard.strings import STRINGS, MODE_LABELS
+from dashboard.utils import (
+    load_monthly as _load_monthly,
+    load_daily_totals as _load_daily_totals,
+    load_modal_split as _load_modal_split,
+    load_yoy as _load_yoy,
+    load_heatmap as _load_heatmap,
+    load_amba_recovery as _load_amba_recovery,
+    load_top_empresas as _load_top_empresas,
+    load_by_provincia as _load_by_provincia,
+    add_event_annotations as _add_event_annotations,
+    add_fare_annotations as _add_fare_annotations,
+    mode_color_map, hex_to_rgb, compute_mom_pct, index_to_baseline,
+)
 
 # ── Session state ──────────────────────────────────────────────────────────
 if "lang" not in st.session_state:
@@ -56,298 +69,57 @@ def get_conn():
 
 @st.cache_data(ttl=3600)
 def load_monthly() -> pd.DataFrame:
-    return get_conn().execute("""
-        SELECT * FROM monthly_transactions
-        WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
-        ORDER BY month_start, modo
-    """).df()
+    return _load_monthly(get_conn())
 
 
 @st.cache_data(ttl=3600)
 def load_daily_totals() -> pd.DataFrame:
-    return get_conn().execute("""
-        SELECT fecha, year, month, day_of_week, modo,
-               SUM(cantidad_usos) AS cantidad_usos
-        FROM daily_transactions
-        WHERE NOT is_suspicious
-          AND modo IN ('COLECTIVO', 'TREN', 'SUBTE')
-        GROUP BY fecha, year, month, day_of_week, modo
-        ORDER BY fecha
-    """).df()
+    return _load_daily_totals(get_conn())
 
 
 @st.cache_data(ttl=3600)
 def load_modal_split() -> pd.DataFrame:
-    return get_conn().execute("""
-        SELECT * FROM v_modal_split
-        WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
-        ORDER BY month_start, modo
-    """).df()
+    return _load_modal_split(get_conn())
 
 
 @st.cache_data(ttl=3600)
 def load_yoy() -> pd.DataFrame:
-    return get_conn().execute("""
-        SELECT * FROM v_yoy_monthly
-        WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
-        ORDER BY month_start, modo
-    """).df()
+    return _load_yoy(get_conn())
 
 
 @st.cache_data(ttl=3600)
 def load_heatmap() -> pd.DataFrame:
-    return get_conn().execute("SELECT * FROM v_weekday_heatmap").df()
+    return _load_heatmap(get_conn())
 
 
 @st.cache_data(ttl=3600)
 def load_amba_recovery() -> pd.DataFrame:
-    return get_conn().execute("""
-        WITH base AS (
-            SELECT amba, SUM(total_usos) AS jan2020
-            FROM monthly_by_provincia
-            WHERE month_start = '2020-01-01'
-            GROUP BY amba
-        )
-        SELECT p.month_start, p.amba,
-               SUM(p.total_usos) AS total,
-               ROUND(100.0 * SUM(p.total_usos) / MAX(b.jan2020), 1) AS recovery_index
-        FROM monthly_by_provincia p
-        JOIN base b ON p.amba = b.amba
-        WHERE p.amba IN ('SI', 'NO')
-        GROUP BY p.month_start, p.amba
-        ORDER BY p.month_start, p.amba
-    """).df()
+    return _load_amba_recovery(get_conn())
 
 
 @st.cache_data(ttl=3600)
 def load_top_empresas() -> pd.DataFrame:
-    return get_conn().execute("""
-        SELECT nombre_empresa, modo, total_usos
-        FROM top_empresas
-        WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
-        ORDER BY total_usos DESC
-        LIMIT 10
-    """).df()
+    return _load_top_empresas(get_conn())
 
 
 @st.cache_data(ttl=3600)
 def load_by_provincia() -> pd.DataFrame:
-    return get_conn().execute("""
-        SELECT provincia, SUM(total_usos) AS total
-        FROM monthly_by_provincia
-        WHERE provincia NOT IN ('JN', 'NAN', 'SN', 'SD')
-          AND provincia IS NOT NULL
-        GROUP BY provincia
-        ORDER BY total DESC
-    """).df()
+    return _load_by_provincia(get_conn())
 
 
 # ── Chart helpers ──────────────────────────────────────────────────────────
 
-def _staggered_annotations(fig, entries: list[dict], line_dash: str = "dot",
-                            x_min=None, x_max=None,
-                            position: str = "top") -> go.Figure:
-    """
-    Draw vertical lines with horizontal labels that never overlap each other.
-
-    position="top"    — labels start at 0.98 and step downward  (events)
-    position="bottom" — labels start at 0.02 and step upward    (fare hikes)
-
-    The y-axis is expanded in the corresponding direction so labels never
-    overlap the data.
-    """
-    # Estimate label width in days based on character count.
-    # At font-size 9, each character is ~5.5px wide. A typical 5-year chart
-    # at ~900px wide spans ~1825 days, so px-per-day ≈ 900/1825 ≈ 0.49.
-    # days_per_char ≈ 5.5 / 0.49 ≈ 11 days per character.
-    DAYS_PER_CHAR = 11
-    LINE_STEP     = 0.05
-
-    if position == "bottom":
-        BASE_Y    = 0.02   # start near the bottom
-        STEP_DIR  = +1     # step upward (increasing paper-y)
-        yanchor   = "bottom"
-    else:
-        BASE_Y    = 0.98   # start near the top
-        STEP_DIR  = -1     # step downward (decreasing paper-y)
-        yanchor   = "top"
-
-    # Infer x_min / x_max from existing data traces if not supplied
-    if x_min is None or x_max is None:
-        all_x = []
-        for trace in fig.data:
-            xs = getattr(trace, "x", None)
-            if xs is not None:
-                all_x.extend([v for v in xs if v is not None])
-        if all_x:
-            x_min = x_min or min(all_x)
-            x_max = x_max or max(all_x)
-
-    # Filter entries to only those within the chart's x range
-    if x_min is not None and x_max is not None:
-        entries = [
-            e for e in entries
-            if pd.Timestamp(x_min) <= e["ts"] <= pd.Timestamp(x_max)
-        ]
-
-    if not entries:
-        return fig
-
-    dates  = [e["ts"]    for e in entries]
-    hovers = [e["hover"] for e in entries]
-    colors = [e["color"] for e in entries]
-
-    # placed: list of (ts, y_paper, label_width_days) for every committed label
-    placed: list[tuple] = []
-
-    def clashes(ts, y, label):
-        """True if a label at (ts, y) overlaps any already-placed label."""
-        new_width = len(label) * DAYS_PER_CHAR
-        for p_ts, p_y, p_width in placed:
-            x_overlap = abs((ts - p_ts).days) < (new_width + p_width) / 2
-            y_overlap  = abs(y - p_y) < LINE_STEP * 0.9
-            if x_overlap and y_overlap:
-                return True
-        return False
-
-    for i, ev in enumerate(entries):
-        ts = ev["ts"]
-
-        y = BASE_Y
-        while clashes(ts, y, ev["label"]):
-            y += STEP_DIR * LINE_STEP
-
-        placed.append((ts, y, len(ev["label"]) * DAYS_PER_CHAR))
-
-        fig.add_vline(
-            x=ts.timestamp() * 1000,
-            line_dash=line_dash,
-            line_color=ev["color"],
-            opacity=0.45,
-        )
-        fig.add_annotation(
-            x=ts,
-            y=y,
-            yref="paper",
-            text=ev["label"],
-            showarrow=False,
-            font=dict(size=9, color=ev["color"]),
-            xanchor="left",
-            yanchor=yanchor,
-            bgcolor=None,
-            borderpad=2,
-        )
-
-    # Invisible scatter for rich hover — constrained to the chart's x range
-    # xaxis="x" with no actual y keeps it off the data plane;
-    # cliponaxis=True prevents it from extending the auto-range
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=[None] * len(dates),
-        mode="markers",
-        marker=dict(symbol="line-ns-open", size=14, color=colors,
-                    line=dict(width=2, color=colors)),
-        text=hovers,
-        hovertemplate="%{text}<extra></extra>",
-        showlegend=False,
-        cliponaxis=True,
-    ))
-
-    if x_min is not None and x_max is not None:
-        fig.update_xaxes(range=[pd.Timestamp(x_min), pd.Timestamp(x_max)])
-
-    # Push the y-axis top up so labels never overlap the data.
-    # Collect all y-values from data traces (skip the annotation scatter
-    # which has y=None) and set yaxis range max to 110% of data max,
-    # leaving the top 20% of paper space for labels.
-    all_y = []
-    for trace in fig.data[:-1]:
-        ys = getattr(trace, "y", None)
-        if ys is not None:
-            all_y.extend([v for v in ys if v is not None])
-
-    if all_y and placed:
-        data_max = max(all_y)
-        data_min = min(v for v in all_y if v is not None)
-
-        if position == "top":
-            # Push y-axis ceiling up to give labels headroom above data
-            lowest_label_y = min(y for _, y, _ in placed)
-            label_fraction = 1.0 - lowest_label_y + LINE_STEP
-            y_top = data_max / (1.0 - label_fraction) if label_fraction < 1.0 else data_max * 1.25
-            current_range = fig.layout.yaxis.range
-            y_bottom = current_range[0] if current_range else min(0, data_min)
-            fig.update_yaxes(range=[y_bottom, y_top])
-        else:
-            # Push y-axis floor down to give labels headroom below data
-            highest_label_y = max(y for _, y, _ in placed)
-            label_fraction = highest_label_y + LINE_STEP
-            y_bottom = data_min - abs(data_min) * (label_fraction / (1.0 - label_fraction + 1e-9))
-            current_range = fig.layout.yaxis.range
-            y_top = current_range[1] if current_range else data_max * 1.05
-            fig.update_yaxes(range=[y_bottom, y_top])
-
-    return fig
+def add_event_annotations(fig: go.Figure, y_ref: float = 0) -> go.Figure:
+    """Annotate fig with historical events (language from session state)."""
+    return _add_event_annotations(fig, lang=st.session_state.lang)
 
 
-def add_event_annotations(fig, y_ref: float = 0):
-    """
-    Draw vertical dotted lines for key historical events (EVENTS).
-    Labels are staggered vertically to prevent overlap.
-    Hover tooltip shows date, label, and notes.
-    """
-    lang    = st.session_state.lang
-    entries = []
-
-    for ev in EVENTS:
-        ts   = pd.Timestamp(ev["date"])
-        lbl  = ev.get(f"label_{lang}", ev.get("label_es", ""))
-        note = ev.get("notes", "")
-        hover = f"<b>{ts.strftime('%d/%m/%Y')}</b><br>{lbl}"
-        if note:
-            hover += f"<br><i>{note}</i>"
-        entries.append({"ts": ts, "label": lbl, "hover": hover, "color": ev["color"]})
-
-    return _staggered_annotations(fig, entries, line_dash="dot")
-
-
-def add_fare_annotations(fig, y_ref: float = 0, scope_filter: list | None = None):
-    """
-    Draw vertical dashed lines for fare hike events (FARE_HIKES).
-    Labels are staggered vertically to prevent overlap.
-    Hover tooltip shows date, scope, magnitude, and notes.
-    scope_filter: if given, only draw hikes whose scope is in the list.
-    """
-    lang = st.session_state.lang
-    scope_colors = {
-        "national":   "#7C3AED",
-        "amba":       "#9F67E8",
-        "amba_local": "#BFA0E8",
-        "interior":   "#C084FC",
-    }
-    entries = []
-
-    for h in FARE_HIKES:
-        if scope_filter and h["scope"] not in scope_filter:
-            continue
-
-        ts    = pd.Timestamp(h["date"])
-        lbl   = h.get(f"label_{lang}", h.get("label_es", ""))
-        scope = h["scope"]
-        mag   = h["magnitude"]
-        note  = h.get("notes", "")
-        color = scope_colors.get(scope, "#7C3AED")
-
-        mag_str = f"+{mag}%" if mag > 0 else ("congelamiento" if lang == "es" else "freeze")
-        # Short label for the staggered tag: just the magnitude
-        short_lbl = mag_str
-        hover = f"<b>{ts.strftime('%d/%m/%Y')}</b> · {mag_str}<br>{lbl}<br><i>Scope: {scope}</i>"
-        if note:
-            hover += f"<br>{note}"
-
-        entries.append({"ts": ts, "label": short_lbl, "hover": hover, "color": color})
-
-    return _staggered_annotations(fig, entries, line_dash="dash", position="bottom")
+def add_fare_annotations(
+    fig: go.Figure, y_ref: float = 0, scope_filter: list | None = None
+) -> go.Figure:
+    """Annotate fig with fare hike events (language from session state)."""
+    return _add_fare_annotations(fig, lang=st.session_state.lang,
+                                 scope_filter=scope_filter)
 
 
 def mode_color_map() -> dict:
@@ -1140,10 +912,7 @@ with tab_an:
 # TAB 5 — FORECAST
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-def _hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
-    """Convert '#RRGGBB' to (r, g, b) floats in 0–1 range."""
-    h = hex_color.lstrip("#")
-    return tuple(int(h[i:i+2], 16) / 255 for i in (0, 2, 4))
+# hex_to_rgb imported from dashboard.utils
 
 
 with tab_fc:
@@ -1176,7 +945,7 @@ with tab_fc:
                 for mode, fc in forecasts.items():
                     hist = fc[~fc["is_forecast"]]
                     pred = fc[fc["is_forecast"]]
-                    r, g, b = _hex_to_rgb(cmap[mode])
+                    r, g, b = hex_to_rgb(cmap[mode])
 
                     fig = go.Figure()
 

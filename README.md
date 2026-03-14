@@ -2,7 +2,7 @@
 
 An end-to-end data engineering and data science project analyzing Argentina's SUBE public transit card system — from raw government CSVs to an interactive bilingual dashboard with statistical analysis and ML-powered demand forecasting.
 
-**[🚀 Live demo](https://sube-transit-analytics.streamlit.app/)** · Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.
+**[🚀 Live demo (IN DEVELOPMENT)](https://sube-transit-analytics.streamlit.app/)** · Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.
 
 ![Update SUBE data](https://github.com/sanbestia/SUBE-transit-analytics/actions/workflows/update_data.yaml/badge.svg)
 

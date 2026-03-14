@@ -4,6 +4,8 @@ An end-to-end data engineering and data science project analyzing Argentina's SU
 
 **Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.**
 
+![Update SUBE data](https://github.com/YOUR_USERNAME/SUBE-transit-analytics/actions/workflows/update_data.yaml/badge.svg)
+
 ---
 
 ## What this project does
@@ -87,7 +89,7 @@ SUBE-transit-analytics/
 │   └── test_ml.py
 │
 └── .github/workflows/
-    └── update_data.yml          # Daily pipeline run + DB commit
+    └── update_data.yaml          # Daily pipeline run + DB commit
 ```
 
 ---
@@ -195,7 +197,14 @@ pytest tests/ -v
 
 ### Option B: GitHub Actions (recommended)
 
-Push the repo to GitHub — the workflow in `.github/workflows/update_data.yml` runs daily at 7 AM Argentina time, commits the updated `sube.duckdb`, and keeps the dashboard current with no manual intervention.
+The workflow in `.github/workflows/update_data.yaml` runs daily at 07:00 ART (10:00 UTC):
+
+1. Checks out the repo
+2. Installs dependencies with `uv sync`
+3. Runs `run_pipeline.py` (re-downloads only the current year's file)
+4. Commits the updated `data/processed/sube.duckdb` back to the repo with `[skip ci]` to avoid loops
+
+Only commits when the database actually changed — if there's no new data from the source, the step exits cleanly. You can also trigger it manually from the Actions tab at any time.
 
 ### Option C: Streamlit Cloud
 

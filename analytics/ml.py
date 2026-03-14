@@ -126,15 +126,6 @@ def _build_covid_impact(df: pd.DataFrame) -> pd.DataFrame:
         (df["ds"] <= pd.Timestamp("2021-12-01"))
     ).astype(int)
     return df
-    """Return a Prophet-ready DataFrame (ds, y) for a single mode."""
-    df = conn.execute("""
-        SELECT month_start AS ds, total_usos AS y
-        FROM monthly_transactions
-        WHERE modo = ?
-        ORDER BY ds
-    """, [mode]).df()
-    df["ds"] = pd.to_datetime(df["ds"])
-    return df
 
 
 def _make_future(model, horizon: int, use_covid_regressor: bool = False) -> pd.DataFrame:

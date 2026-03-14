@@ -1,0 +1,44 @@
+name: Update SUBE data
+
+on:
+  schedule:
+    # 10:00 UTC = 07:00 ART (Argentina Time, UTC-3)
+    - cron: "0 10 * * *"
+  workflow_dispatch:   # allow manual trigger from the Actions tab
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push the updated sube.duckdb
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run ETL pipeline
+        run: uv run python run_pipeline.py
+
+      - name: Commit updated database
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f data/processed/sube.duckdb
+          # Only commit if the DB actually changed
+          if git diff --staged --quiet; then
+            echo "No changes to sube.duckdb — nothing to commit."
+          else
+            git commit -m "chore: update sube.duckdb [skip ci]"
+            git push
+          fi

@@ -5,11 +5,13 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# Project data
+# Project data — raw CSVs are large and regenerable, DB is committed by CI
 data/raw/
 data/processed/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/processed/sube.duckdb
+
 logs/
 
 # Env

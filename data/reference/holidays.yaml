@@ -1,0 +1,707 @@
+# holidays.yaml — Argentine national public holidays 2020–2025.
+# Used by detect_anomalies() to label STL residual spikes.
+#
+# Sources:
+#   - argentina.gob.ar/jefatura/feriados-nacionales-* (official)
+#   - officeholidays.com/countries/argentina (cross-checked)
+#   - Ley 27.399 (trasladable rules: Tue/Wed → prev Mon; Thu/Fri → next Mon)
+#
+# Fields:
+#   date     : YYYY-MM-DD (actual observed holiday date, after any trasladable shift)
+#   name_es  : Spanish name
+#   name_en  : English name
+#   type     : inamovible | trasladable | puente | semana_santa | carnaval
+#
+# Note: "puente" entries are tourism bridge days declared by executive decree each year.
+# "semana_santa" includes Maundy Thursday (optional) and Good Friday (mandatory).
+# Carnaval (Mon+Tue before Ash Wednesday) is mandatory since 2011.
+
+# ── 2020 ──────────────────────────────────────────────────────────────────────
+
+- date: "2020-01-01"
+  name_es: "Año Nuevo"
+  name_en: "New Year's Day"
+  type: inamovible
+
+- date: "2020-02-24"
+  name_es: "Carnaval (lunes)"
+  name_en: "Carnival Monday"
+  type: carnaval
+
+- date: "2020-02-25"
+  name_es: "Carnaval (martes)"
+  name_en: "Carnival Tuesday"
+  type: carnaval
+
+- date: "2020-03-23"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2020-03-24"
+  name_es: "Día de la Memoria por la Verdad y la Justicia"
+  name_en: "Truth and Justice Memorial Day"
+  type: inamovible
+
+- date: "2020-03-31"
+  name_es: "Día de Malvinas (trasladado — decreto COVID)"
+  name_en: "Malvinas Day (moved — COVID decree)"
+  type: trasladable
+  notes: "Apr 2 moved to Mar 31 by decree; Argentina already in ASPO strict lockdown."
+
+- date: "2020-04-10"
+  name_es: "Viernes Santo"
+  name_en: "Good Friday"
+  type: semana_santa
+
+- date: "2020-05-01"
+  name_es: "Día del Trabajador"
+  name_en: "Labour Day"
+  type: inamovible
+
+- date: "2020-05-25"
+  name_es: "Revolución de Mayo"
+  name_en: "May Revolution Day"
+  type: inamovible
+
+- date: "2020-06-20"
+  name_es: "Paso a la Inmortalidad del Gral. Manuel Belgrano"
+  name_en: "Flag Day / General Belgrano Day"
+  type: trasladable
+
+- date: "2020-07-09"
+  name_es: "Día de la Independencia"
+  name_en: "Independence Day"
+  type: inamovible
+
+- date: "2020-07-10"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2020-08-17"
+  name_es: "Paso a la Inmortalidad del Gral. San Martín (trasladado)"
+  name_en: "San Martín Day (moved to Mon)"
+  type: trasladable
+
+- date: "2020-10-12"
+  name_es: "Día del Respeto a la Diversidad Cultural (trasladado)"
+  name_en: "Cultural Diversity Day (moved)"
+  type: trasladable
+
+- date: "2020-11-23"
+  name_es: "Día de la Soberanía Nacional (trasladado)"
+  name_en: "National Sovereignty Day (moved to Mon)"
+  type: trasladable
+
+- date: "2020-12-07"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2020-12-08"
+  name_es: "Inmaculada Concepción de María"
+  name_en: "Immaculate Conception"
+  type: inamovible
+
+- date: "2020-12-25"
+  name_es: "Navidad"
+  name_en: "Christmas Day"
+  type: inamovible
+
+# ── 2021 ──────────────────────────────────────────────────────────────────────
+
+- date: "2021-01-01"
+  name_es: "Año Nuevo"
+  name_en: "New Year's Day"
+  type: inamovible
+
+- date: "2021-02-15"
+  name_es: "Carnaval (lunes)"
+  name_en: "Carnival Monday"
+  type: carnaval
+
+- date: "2021-02-16"
+  name_es: "Carnaval (martes)"
+  name_en: "Carnival Tuesday"
+  type: carnaval
+
+- date: "2021-03-24"
+  name_es: "Día de la Memoria por la Verdad y la Justicia"
+  name_en: "Truth and Justice Memorial Day"
+  type: inamovible
+
+- date: "2021-04-02"
+  name_es: "Día de Malvinas / Viernes Santo (coinciden)"
+  name_en: "Malvinas Day / Good Friday (coincide)"
+  type: semana_santa
+  notes: "Apr 2 Malvinas Day and Good Friday fell on the same date in 2021."
+
+- date: "2021-05-01"
+  name_es: "Día del Trabajador"
+  name_en: "Labour Day"
+  type: inamovible
+
+- date: "2021-05-24"
+  name_es: "Feriado puente (25 de Mayo)"
+  name_en: "Bridge holiday (May Revolution)"
+  type: puente
+
+- date: "2021-05-25"
+  name_es: "Revolución de Mayo"
+  name_en: "May Revolution Day"
+  type: inamovible
+
+- date: "2021-06-20"
+  name_es: "Paso a la Inmortalidad del Gral. Manuel Belgrano"
+  name_en: "Flag Day / General Belgrano Day"
+  type: inamovible
+
+- date: "2021-06-21"
+  name_es: "Paso a la Inmortalidad del Gral. Martín M. de Güemes (trasladado)"
+  name_en: "Güemes Day (moved to Mon)"
+  type: trasladable
+
+- date: "2021-07-09"
+  name_es: "Día de la Independencia"
+  name_en: "Independence Day"
+  type: inamovible
+
+- date: "2021-08-16"
+  name_es: "Paso a la Inmortalidad del Gral. San Martín (trasladado)"
+  name_en: "San Martín Day (moved to Mon)"
+  type: trasladable
+
+- date: "2021-10-08"
+  name_es: "Feriado puente (Diversidad Cultural)"
+  name_en: "Bridge holiday (Cultural Diversity)"
+  type: puente
+
+- date: "2021-10-11"
+  name_es: "Día del Respeto a la Diversidad Cultural (trasladado)"
+  name_en: "Cultural Diversity Day (moved to Mon)"
+  type: trasladable
+
+- date: "2021-11-22"
+  name_es: "Día de la Soberanía Nacional (trasladado)"
+  name_en: "National Sovereignty Day (moved to Mon)"
+  type: trasladable
+
+- date: "2021-12-08"
+  name_es: "Inmaculada Concepción de María"
+  name_en: "Immaculate Conception"
+  type: inamovible
+
+- date: "2021-12-25"
+  name_es: "Navidad"
+  name_en: "Christmas Day"
+  type: inamovible
+
+# ── 2022 ──────────────────────────────────────────────────────────────────────
+
+- date: "2022-01-01"
+  name_es: "Año Nuevo"
+  name_en: "New Year's Day"
+  type: inamovible
+
+- date: "2022-02-28"
+  name_es: "Carnaval (lunes)"
+  name_en: "Carnival Monday"
+  type: carnaval
+
+- date: "2022-03-01"
+  name_es: "Carnaval (martes)"
+  name_en: "Carnival Tuesday"
+  type: carnaval
+
+- date: "2022-03-24"
+  name_es: "Día de la Memoria por la Verdad y la Justicia"
+  name_en: "Truth and Justice Memorial Day"
+  type: inamovible
+
+- date: "2022-04-02"
+  name_es: "Día de Malvinas"
+  name_en: "Malvinas Day"
+  type: inamovible
+
+- date: "2022-04-14"
+  name_es: "Jueves Santo"
+  name_en: "Maundy Thursday"
+  type: semana_santa
+
+- date: "2022-04-15"
+  name_es: "Viernes Santo"
+  name_en: "Good Friday"
+  type: semana_santa
+
+- date: "2022-05-01"
+  name_es: "Día del Trabajador"
+  name_en: "Labour Day"
+  type: inamovible
+
+- date: "2022-05-18"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2022-05-25"
+  name_es: "Revolución de Mayo"
+  name_en: "May Revolution Day"
+  type: inamovible
+
+- date: "2022-06-17"
+  name_es: "Paso a la Inmortalidad del Gral. Martín M. de Güemes"
+  name_en: "Güemes Day"
+  type: inamovible
+
+- date: "2022-06-20"
+  name_es: "Paso a la Inmortalidad del Gral. Manuel Belgrano"
+  name_en: "Flag Day / General Belgrano Day"
+  type: inamovible
+
+- date: "2022-07-09"
+  name_es: "Día de la Independencia"
+  name_en: "Independence Day"
+  type: inamovible
+
+- date: "2022-08-15"
+  name_es: "Paso a la Inmortalidad del Gral. San Martín (trasladado)"
+  name_en: "San Martín Day (moved to Mon)"
+  type: trasladable
+
+- date: "2022-10-07"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2022-10-10"
+  name_es: "Día del Respeto a la Diversidad Cultural (trasladado)"
+  name_en: "Cultural Diversity Day (moved to Mon)"
+  type: trasladable
+
+- date: "2022-11-20"
+  name_es: "Día de la Soberanía Nacional"
+  name_en: "National Sovereignty Day"
+  type: trasladable
+
+- date: "2022-11-21"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2022-12-08"
+  name_es: "Inmaculada Concepción de María"
+  name_en: "Immaculate Conception"
+  type: inamovible
+
+- date: "2022-12-09"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2022-12-25"
+  name_es: "Navidad"
+  name_en: "Christmas Day"
+  type: inamovible
+
+# ── 2023 ──────────────────────────────────────────────────────────────────────
+
+- date: "2023-01-01"
+  name_es: "Año Nuevo"
+  name_en: "New Year's Day"
+  type: inamovible
+
+- date: "2023-02-20"
+  name_es: "Carnaval (lunes)"
+  name_en: "Carnival Monday"
+  type: carnaval
+
+- date: "2023-02-21"
+  name_es: "Carnaval (martes)"
+  name_en: "Carnival Tuesday"
+  type: carnaval
+
+- date: "2023-03-24"
+  name_es: "Día de la Memoria por la Verdad y la Justicia"
+  name_en: "Truth and Justice Memorial Day"
+  type: inamovible
+
+- date: "2023-04-02"
+  name_es: "Día de Malvinas"
+  name_en: "Malvinas Day"
+  type: inamovible
+
+- date: "2023-04-06"
+  name_es: "Jueves Santo"
+  name_en: "Maundy Thursday"
+  type: semana_santa
+
+- date: "2023-04-07"
+  name_es: "Viernes Santo"
+  name_en: "Good Friday"
+  type: semana_santa
+
+- date: "2023-05-01"
+  name_es: "Día del Trabajador"
+  name_en: "Labour Day"
+  type: inamovible
+
+- date: "2023-05-25"
+  name_es: "Revolución de Mayo"
+  name_en: "May Revolution Day"
+  type: inamovible
+
+- date: "2023-05-26"
+  name_es: "Feriado puente (Revolución de Mayo)"
+  name_en: "Bridge holiday (May Revolution)"
+  type: puente
+
+- date: "2023-06-17"
+  name_es: "Paso a la Inmortalidad del Gral. Martín M. de Güemes"
+  name_en: "Güemes Day"
+  type: inamovible
+
+- date: "2023-06-19"
+  name_es: "Feriado puente (Día de la Bandera)"
+  name_en: "Bridge holiday (Flag Day)"
+  type: puente
+
+- date: "2023-06-20"
+  name_es: "Paso a la Inmortalidad del Gral. Manuel Belgrano"
+  name_en: "Flag Day / General Belgrano Day"
+  type: inamovible
+
+- date: "2023-07-09"
+  name_es: "Día de la Independencia"
+  name_en: "Independence Day"
+  type: inamovible
+
+- date: "2023-08-21"
+  name_es: "Paso a la Inmortalidad del Gral. San Martín (trasladado)"
+  name_en: "San Martín Day (moved to Mon)"
+  type: trasladable
+
+- date: "2023-10-13"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2023-10-16"
+  name_es: "Día del Respeto a la Diversidad Cultural (trasladado)"
+  name_en: "Cultural Diversity Day (moved to Mon)"
+  type: trasladable
+
+- date: "2023-11-20"
+  name_es: "Día de la Soberanía Nacional"
+  name_en: "National Sovereignty Day"
+  type: trasladable
+
+- date: "2023-12-08"
+  name_es: "Inmaculada Concepción de María"
+  name_en: "Immaculate Conception"
+  type: inamovible
+
+- date: "2023-12-25"
+  name_es: "Navidad"
+  name_en: "Christmas Day"
+  type: inamovible
+
+# ── 2024 ──────────────────────────────────────────────────────────────────────
+
+- date: "2024-01-01"
+  name_es: "Año Nuevo"
+  name_en: "New Year's Day"
+  type: inamovible
+
+- date: "2024-02-12"
+  name_es: "Carnaval (lunes)"
+  name_en: "Carnival Monday"
+  type: carnaval
+
+- date: "2024-02-13"
+  name_es: "Carnaval (martes)"
+  name_en: "Carnival Tuesday"
+  type: carnaval
+
+- date: "2024-03-24"
+  name_es: "Día de la Memoria por la Verdad y la Justicia"
+  name_en: "Truth and Justice Memorial Day"
+  type: inamovible
+
+- date: "2024-03-28"
+  name_es: "Jueves Santo"
+  name_en: "Maundy Thursday"
+  type: semana_santa
+
+- date: "2024-03-29"
+  name_es: "Viernes Santo"
+  name_en: "Good Friday"
+  type: semana_santa
+
+- date: "2024-04-01"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2024-04-02"
+  name_es: "Día de Malvinas"
+  name_en: "Malvinas Day"
+  type: inamovible
+
+- date: "2024-05-01"
+  name_es: "Día del Trabajador"
+  name_en: "Labour Day"
+  type: inamovible
+
+- date: "2024-05-25"
+  name_es: "Revolución de Mayo"
+  name_en: "May Revolution Day"
+  type: inamovible
+
+- date: "2024-06-17"
+  name_es: "Paso a la Inmortalidad del Gral. Martín M. de Güemes"
+  name_en: "Güemes Day"
+  type: inamovible
+
+- date: "2024-06-20"
+  name_es: "Paso a la Inmortalidad del Gral. Manuel Belgrano"
+  name_en: "Flag Day / General Belgrano Day"
+  type: inamovible
+
+- date: "2024-06-21"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2024-07-09"
+  name_es: "Día de la Independencia"
+  name_en: "Independence Day"
+  type: inamovible
+
+- date: "2024-08-19"
+  name_es: "Paso a la Inmortalidad del Gral. San Martín (trasladado)"
+  name_en: "San Martín Day (moved to Mon)"
+  type: trasladable
+
+- date: "2024-10-11"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2024-10-12"
+  name_es: "Día del Respeto a la Diversidad Cultural"
+  name_en: "Cultural Diversity Day"
+  type: trasladable
+
+- date: "2024-11-18"
+  name_es: "Día de la Soberanía Nacional (trasladado)"
+  name_en: "National Sovereignty Day (moved to Mon)"
+  type: trasladable
+
+- date: "2024-12-08"
+  name_es: "Inmaculada Concepción de María"
+  name_en: "Immaculate Conception"
+  type: inamovible
+
+- date: "2024-12-25"
+  name_es: "Navidad"
+  name_en: "Christmas Day"
+  type: inamovible
+
+# ── 2025 ──────────────────────────────────────────────────────────────────────
+
+- date: "2025-01-01"
+  name_es: "Año Nuevo"
+  name_en: "New Year's Day"
+  type: inamovible
+
+- date: "2025-03-03"
+  name_es: "Carnaval (lunes)"
+  name_en: "Carnival Monday"
+  type: carnaval
+
+- date: "2025-03-04"
+  name_es: "Carnaval (martes)"
+  name_en: "Carnival Tuesday"
+  type: carnaval
+
+- date: "2025-03-24"
+  name_es: "Día de la Memoria por la Verdad y la Justicia"
+  name_en: "Truth and Justice Memorial Day"
+  type: inamovible
+
+- date: "2025-04-02"
+  name_es: "Día de Malvinas"
+  name_en: "Malvinas Day"
+  type: inamovible
+
+- date: "2025-04-17"
+  name_es: "Jueves Santo"
+  name_en: "Maundy Thursday"
+  type: semana_santa
+
+- date: "2025-04-18"
+  name_es: "Viernes Santo"
+  name_en: "Good Friday"
+  type: semana_santa
+
+- date: "2025-05-01"
+  name_es: "Día del Trabajador"
+  name_en: "Labour Day"
+  type: inamovible
+
+- date: "2025-05-25"
+  name_es: "Revolución de Mayo"
+  name_en: "May Revolution Day"
+  type: inamovible
+
+- date: "2025-06-16"
+  name_es: "Paso a la Inmortalidad del Gral. Martín M. de Güemes (trasladado)"
+  name_en: "Güemes Day (moved to Mon)"
+  type: trasladable
+
+- date: "2025-06-20"
+  name_es: "Paso a la Inmortalidad del Gral. Manuel Belgrano"
+  name_en: "Flag Day / General Belgrano Day"
+  type: inamovible
+
+- date: "2025-07-09"
+  name_es: "Día de la Independencia"
+  name_en: "Independence Day"
+  type: inamovible
+
+- date: "2025-08-15"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2025-08-18"
+  name_es: "Paso a la Inmortalidad del Gral. San Martín (trasladado)"
+  name_en: "San Martín Day (moved to Mon)"
+  type: trasladable
+
+- date: "2025-10-13"
+  name_es: "Día del Respeto a la Diversidad Cultural (trasladado)"
+  name_en: "Cultural Diversity Day (moved to Mon)"
+  type: trasladable
+
+- date: "2025-11-21"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+
+- date: "2025-11-24"
+  name_es: "Día de la Soberanía Nacional (trasladado)"
+  name_en: "National Sovereignty Day (moved to Mon)"
+  type: trasladable
+
+- date: "2025-12-08"
+  name_es: "Inmaculada Concepción de María"
+  name_en: "Immaculate Conception"
+  type: inamovible
+
+- date: "2025-12-25"
+  name_es: "Navidad"
+  name_en: "Christmas Day"
+  type: inamovible
+
+# ── 2026 ──────────────────────────────────────────────────────────────────────
+
+- date: "2026-01-01"
+  name_es: "Año Nuevo"
+  name_en: "New Year's Day"
+  type: inamovible
+
+- date: "2026-02-16"
+  name_es: "Carnaval (lunes)"
+  name_en: "Carnival Monday"
+  type: carnaval
+
+- date: "2026-02-17"
+  name_es: "Carnaval (martes)"
+  name_en: "Carnival Tuesday"
+  type: carnaval
+
+- date: "2026-03-23"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+  notes: "Monday before Truth and Justice Day (Mar 24)."
+
+- date: "2026-03-24"
+  name_es: "Día de la Memoria por la Verdad y la Justicia"
+  name_en: "Truth and Justice Memorial Day"
+  type: inamovible
+
+- date: "2026-04-02"
+  name_es: "Día del Veterano y de los Caídos en la Guerra de Malvinas"
+  name_en: "Veterans and Fallen of the Malvinas War Day"
+  type: inamovible
+
+- date: "2026-04-03"
+  name_es: "Viernes Santo"
+  name_en: "Good Friday"
+  type: semana_santa
+
+- date: "2026-05-01"
+  name_es: "Día del Trabajador"
+  name_en: "Labour Day"
+  type: inamovible
+
+- date: "2026-05-25"
+  name_es: "Revolución de Mayo"
+  name_en: "May Revolution Day"
+  type: inamovible
+
+- date: "2026-06-15"
+  name_es: "Paso a la Inmortalidad del Gral. Martín M. de Güemes (trasladado)"
+  name_en: "Güemes Day (moved to Mon)"
+  type: trasladable
+  notes: "Jun 17 moved to Mon Jun 15 (Thu/Fri → next Mon rule)."
+
+- date: "2026-06-20"
+  name_es: "Paso a la Inmortalidad del Gral. Manuel Belgrano"
+  name_en: "Flag Day / General Belgrano Day"
+  type: inamovible
+
+- date: "2026-07-09"
+  name_es: "Día de la Independencia"
+  name_en: "Independence Day"
+  type: inamovible
+
+- date: "2026-07-10"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+  notes: "Friday after Independence Day."
+
+- date: "2026-08-17"
+  name_es: "Paso a la Inmortalidad del Gral. San Martín (trasladado)"
+  name_en: "San Martín Day (moved to Mon)"
+  type: trasladable
+
+- date: "2026-10-12"
+  name_es: "Día del Respeto a la Diversidad Cultural (trasladado)"
+  name_en: "Cultural Diversity Day (moved to Mon)"
+  type: trasladable
+
+- date: "2026-11-23"
+  name_es: "Día de la Soberanía Nacional (trasladado)"
+  name_en: "National Sovereignty Day (moved to Mon)"
+  type: trasladable
+
+- date: "2026-12-07"
+  name_es: "Feriado puente turístico"
+  name_en: "Tourism bridge holiday"
+  type: puente
+  notes: "Monday before Immaculate Conception (Dec 8)."
+
+- date: "2026-12-08"
+  name_es: "Inmaculada Concepción de María"
+  name_en: "Immaculate Conception"
+  type: inamovible
+
+- date: "2026-12-25"
+  name_es: "Navidad"
+  name_en: "Christmas Day"
+  type: inamovible

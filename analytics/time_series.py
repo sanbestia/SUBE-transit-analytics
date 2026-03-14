@@ -17,7 +17,7 @@ import numpy as np
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import EVENTS
+from config import EVENTS, HOLIDAYS
 
 
 def _get_total_daily(conn) -> pd.DataFrame:
@@ -131,13 +131,40 @@ def detect_anomalies(
     })
     df["is_anomaly"] = df["z_score"].abs() > z_threshold
 
-    # Annotate with known events using the correct language label
+    # Build label map from known macro/policy events
     label_key = f"label_{lang}"
     event_map = {
         pd.Timestamp(e["date"]): e.get(label_key, e.get("label_es", ""))
         for e in EVENTS
     }
-    df["event_label"] = df["fecha"].map(event_map).fillna("")
+
+    # Build holiday map — name_es / name_en keyed by exact date
+    holiday_name_key = f"name_{lang}"
+    holiday_map = {
+        pd.Timestamp(h["date"]): h.get(holiday_name_key, h.get("name_es", ""))
+        for h in HOLIDAYS
+    }
+
+    # For each anomaly date, look up: (1) exact event match, (2) exact holiday match,
+    # (3) holiday within ±1 day (multi-day clusters cause adjacent-day residuals).
+    def _get_label(fecha: pd.Timestamp) -> str:
+        if fecha in event_map and event_map[fecha]:
+            return event_map[fecha]
+        if fecha in holiday_map:
+            prefix = "Feriado: " if lang == "es" else "Holiday: "
+            return prefix + holiday_map[fecha]
+        # Check ±1 day window for holiday clusters
+        for delta in (-1, 1):
+            neighbour = fecha + pd.Timedelta(days=delta)
+            if neighbour in holiday_map:
+                label = holiday_map[neighbour]
+                if lang == "es":
+                    return f"Feriado adj. ({delta:+d}d): {label}"
+                else:
+                    return f"Adjacent holiday ({delta:+d}d): {label}"
+        return ""
+
+    df["event_label"] = df["fecha"].apply(_get_label)
 
     anomaly_count = df["is_anomaly"].sum()
     logger.info(f"Detected {anomaly_count} anomalies (|z| > {z_threshold})")

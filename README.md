@@ -22,14 +22,14 @@ Six tabs, fully bilingual (Spanish / English):
 
 | Tab | What it shows |
 |-----|---------------|
-| 📊 **Overview** | Daily ridership by mode with 7-day moving average, monthly modal split, top 10 operators by ridership |
-| 🦠 **COVID-19** | The asymmetric collapse of March 2020 — SUBTE −92%, TREN −87%, COLECTIVO −58% — and the recovery curve through 2022 |
-| 🔄 **Modal Substitution** | Month-over-month and year-over-year % change per mode across the full series, with fare hike and event annotations |
-| 💪 **Resilience** | AMBA vs Interior ridership on dual axes, fare hike impact from Jan 2024, seasonal amplitude by region, ridership by province |
-| 🔬 **Analysis** | Weekday × month heatmap; interactive STL decomposition (trend + seasonality + residuals) with anomaly detection |
+| 📊 **Overview** | Daily ridership by mode with 7-day moving average; monthly modal split; total trips by province; average ridership heatmap by weekday × month; top 10 operators by ridership |
+| 🦠 **COVID-19** | The asymmetric collapse of March 2020 — SUBTE −92%, TREN −87%, COLECTIVO −58% — annotated directly on the chart; indexed view (Jan 2020 = 100) for direct mode comparison; indexed modal recovery chart (Nov 2020 = 100) showing SUBTE rebounding faster; year-over-year % change |
+| 🔄 **Modal Substitution** | Monthly change (%) and year-over-year % per mode across the full series, with fare hike and event annotations |
+| 💪 **Resilience** | AMBA vs Interior ridership on dual axes; the Jan–Feb 2024 national fare shock window shaded and labelled; regional comparison indexed to Jan 2020 |
+| 🔬 **Analysis** | Interactive STL decomposition (trend + seasonality + residuals) with anomaly detection |
 | 🔮 **Forecast** | Prophet demand forecast 3–12 months ahead per mode, with 80% confidence intervals and a summary table |
 
-All charts have annotated vertical lines for key historical events (ASPO lockdowns, devaluations, fare regime changes) and fare hike dates, with staggered labels to prevent overlap.
+Key findings are surfaced as permanent callout cards at the top of the page and above each relevant tab — not hidden in collapsible expanders. All charts have annotated vertical lines for key historical events and fare hike dates, with staggered labels to prevent overlap.
 
 ---
 
@@ -41,9 +41,7 @@ All charts have annotated vertical lines for key historical events (ASPO lockdow
 
 - **The 2024 fare shock is visible in the data.** Two fare hikes in January (+45%) and February (+66%) 2024 — triggered by the Milei devaluation — caused a measurable ridership drop in AMBA that does not appear in Interior provinces at the same timing. Interior absorbed a different shock (loss of the Compensation Fund) on a different schedule.
 
-- **AMBA has lower seasonal amplitude than Interior.** The ratio of peak to trough month is consistently closer to 1.0 in AMBA than in Interior provinces, reflecting the higher share of formal commuting in the metro area versus seasonal and tourism-driven travel in the interior.
-
-- **Seasonal patterns:** ridership peaks in March–April and August–September (Argentina's peak commuting months), and dips in January (summer holidays) and July (winter school break).
+- **Seasonal patterns:** ridership peaks in March–April and August–September (Argentina's peak commuting months), and dips in January (summer holidays) and July (winter school break). This pattern is consistent across all years in the dataset.
 
 ---
 

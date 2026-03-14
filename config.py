@@ -51,3 +51,4 @@ def _load_yaml(filename: str) -> list[dict]:
 
 EVENTS     = _load_yaml("events.yaml")
 FARE_HIKES = _load_yaml("fare_hikes.yaml")
+HOLIDAYS   = _load_yaml("holidays.yaml")

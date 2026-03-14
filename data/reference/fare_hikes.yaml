@@ -118,18 +118,28 @@
 - date: "2026-02-18"
   scope: national
   magnitude: 31
-  label_es: "Aumento febrero 2026 (+31%) — etapa 1"
-  label_en: "Feb 2026 hike (+31%) — stage 1"
-  notes: "Two-stage update: Feb 18 and Mar 16. Boleto mínimo: $650 → $700 (Mar)."
-
+  label_es: "Aumento nacional (+31%) — etapa 1 (líneas nacionales AMBA)"
+  label_en: "National hike (+31%) — stage 1 (AMBA national lines)"
+  notes: >
+    National lines (104 lines crossing CABA/Conurbano) raised from $494.83 to $650
+    (+31.4%). A second stage brings it to $700 on Mar 16 (+7.7%, see next entry).
+    Separate from the monthly CPI+2% update applied to CABA/PBA local lines on Feb 1.
+ 
 - date: "2026-03-01"
   scope: amba_local
   magnitude: 5
-  label_es: "Actualización mensual CABA/PBA — marzo 2026"
-  label_en: "CABA/PBA monthly update — Mar 2026"
-
+  label_es: "Actualización mensual CABA/PBA — marzo 2026 (+4.9%)"
+  label_en: "CABA/PBA monthly update — Mar 2026 (+4.9%)"
+  notes: >
+    Formula: CPI of January (2.9%) + 2pp = 4.9%. CABA local lines: $650.11 → $681.97.
+    PBA local lines: +4.9% applied separately.
+ 
 - date: "2026-03-16"
   scope: national
   magnitude: 8
-  label_es: "Aumento nacional — etapa 2 marzo 2026"
-  label_en: "National hike — Mar 2026 stage 2"
+  label_es: "Aumento nacional — etapa 2 marzo 2026 (+7.7%)"
+  label_en: "National hike — Mar 2026 stage 2 (+7.7%)"
+  notes: >
+    Completes the two-stage Feb 2026 package. National lines: $650 → $700 (+7.7%).
+    Formula: CPI of Feb (2.9%) + additional adjustment to reach target of $700.
+ 

@@ -26,431 +26,7 @@ st.set_page_config(
 )
 
 # ── Translations ───────────────────────────────────────────────────────────
-STRINGS = {
-    "es": {
-        "page_title":       "SUBE — Análisis de Transporte Público",
-        "sidebar_title":    "SUBE Analytics",
-        "sidebar_source":   "Datos: datos.transporte.gob.ar",
-        "periodo":          "Período",
-        "modos":            "Modos de transporte",
-        "show_events":      "Mostrar eventos históricos",
-        "refresh":          "🔄 Actualizar datos",
-        "data_until":       "Datos hasta",
-        "kpi_total":        "Total de viajes",
-        "kpi_peak":         "Día pico",
-        "kpi_avg":          "Promedio diario",
-        "kpi_top_mode":     "Modo dominante",
-        "kpi_trips":        "viajes",
-        "tab_overview":     "📊 Resumen",
-        "tab_covid":        "🦠 COVID-19",
-        "tab_modal":        "🔄 Sustitución Modal",
-        "tab_resilience":   "💪 Resiliencia",
-        "tab_analysis":     "🔬 Análisis",
-
-        # ── Overview ──────────────────────────────────────────────────────
-        "ov_series_title":    "Ridership diario por modo",
-        "ov_series_explainer": "Cantidad de viajes registrados por día para cada modo de transporte. "
-                               "La línea fina muestra el valor diario real; la línea gruesa es el **promedio móvil de 7 días**, "
-                               "que suaviza las variaciones normales entre días de semana y fin de semana para revelar la tendencia subyacente. "
-                               "Las líneas verticales punteadas marcan eventos históricos clave.",
-        "ov_series_y":        "Viajes",
-        "ov_split_title":     "Participación por modo (modal split mensual)",
-        "ov_split_explainer": "El **modal split** muestra qué porcentaje del total de viajes corresponde a cada modo en cada mes. "
-                               "Un valor constante indica que los modos crecen o caen al mismo ritmo. "
-                               "Cambios en la participación revelan sustitución modal — por ejemplo, cuando el SUBTE cerró en 2020, "
-                               "su porcentaje cayó casi a cero y el COLECTIVO absorbió la mayor parte de los viajes restantes.",
-        "ov_split_y":         "Participación (%)",
-        "ov_empresas_title":  "Top 10 empresas por ridership total (2020–presente)",
-        "ov_empresas_explainer": "Las diez operadoras con mayor cantidad de viajes acumulados desde 2020. "
-                                  "Cada empresa puede operar uno o varios modos. EMOVA (SUBTE) domina en términos absolutos "
-                                  "porque concentra toda la red de subterráneos de Buenos Aires en una sola concesión.",
-        "ov_empresas_y":      "Total de viajes",
-        "ov_empresas_x":      "Empresa",
-
-        # ── COVID ─────────────────────────────────────────────────────────
-        "cv_collapse_title":    "Colapso COVID-19: ridership mensual por modo",
-        "cv_collapse_explainer": "En marzo de 2020 el gobierno nacional decretó el ASPO (Aislamiento Social Preventivo y Obligatorio), "
-                                  "el primer lockdown estricto de Argentina. El impacto fue inmediato pero **asimétrico entre modos**: "
-                                  "el SUBTE colapsó un **92%** en abril 2020 porque depende casi exclusivamente de trabajadores de oficina en CABA, "
-                                  "el TREN cayó un **87%**, pero el COLECTIVO sólo un **58%** — los colectivos siguieron transportando "
-                                  "trabajadores esenciales (salud, logística, seguridad) que no podían trabajar desde casa.",
-        "cv_subst_title":       "Sustitución modal: variación mensual % (SUBTE vs COLECTIVO)",
-        "cv_subst_explainer":   "Este gráfico muestra la **variación mes a mes** de cada modo, no el volumen absoluto. "
-                                 "Permite ver si un modo crece más rápido o más lento que otro en el mismo período. "
-                                 "Durante 2021, el SUBTE creció consistentemente más rápido que el COLECTIVO — "
-                                 "esto sugiere que cuando las restricciones se levantaron, los usuarios volvieron al subte "
-                                 "con más entusiasmo que al colectivo, posiblemente por velocidad y confiabilidad.",
-        "cv_yoy_title":         "Variación año a año (%) por modo",
-        "cv_yoy_explainer":     "Compara cada mes con el mismo mes del año anterior, eliminando la estacionalidad natural "
-                                 "(por ejemplo, enero siempre tiene menos viajes que marzo). "
-                                 "Barras positivas = crecimiento respecto al año anterior. Barras negativas = caída. "
-                                 "El año 2021 muestra barras enormemente positivas porque se compara contra el piso del lockdown de 2020.",
-        "cv_yoy_y":             "Δ% vs año anterior",
-
-        # ── Modal substitution ────────────────────────────────────────────
-        "ms_mom_title":       "Variación mensual % por modo — serie completa",
-        "ms_mom_explainer":   "Variación mes a mes de cada modo a lo largo de toda la serie. "
-                               "Permite identificar cómo cada evento histórico afectó de manera diferente a cada modo: "
-                               "el SUBTE reacciona más violentamente a shocks discretos (lockdowns, paros) porque tiene menor "
-                               "sustitución posible; el COLECTIVO es más resiliente porque sirve zonas sin cobertura de subte o tren. "
-                               "Los eventos históricos y tarifarios están anotados para facilitar la lectura.",
-        "ms_share_title":     "Participación relativa por modo — evolución mensual",
-        "ms_share_explainer": "El **modal split** muestra qué porcentaje del total corresponde a cada modo en cada mes. "
-                               "Un cambio sostenido en la participación indica una sustitución estructural, no un shock puntual. "
-                               "Por ejemplo, si el SUBTE recupera participación post-COVID más rápido que el COLECTIVO, "
-                               "sugiere que los pasajeros que volvieron primero son los que no tienen alternativa al subte.",
-        "ms_yoy_title":       "Variación año a año % — todos los modos",
-        "ms_yoy_explainer":   "Compara cada mes con el mismo mes del año anterior para eliminar estacionalidad. "
-                               "Muestra si los modos crecen o caen al mismo ritmo ante cada evento, "
-                               "o si uno diverge del resto.",
-        "rs_amba_title":       "Ridership mensual: AMBA vs Interior",
-        "rs_amba_explainer":   "**AMBA** (Área Metropolitana de Buenos Aires) incluye CABA y el Gran Buenos Aires. "
-                                "**Interior** son todas las demás provincias. "
-                                "El gráfico muestra viajes mensuales totales en valores absolutos. "
-                                "El AMBA concentra la mayor parte del ridership del país por densidad poblacional. "
-                                "La caída del AMBA post-2024 refleja el impacto de la pérdida de subsidios nacionales; "
-                                "el Interior muestra mayor estabilidad porque cada provincia gestionó sus tarifas de forma independiente.",
-        "rs_milei_title":      "Efecto tarifario 2023–presente: AMBA vs Interior",
-        "rs_milei_explainer":  "Zoom sobre el período desde enero 2023. "
-                                "Las líneas verticales muestran cada aumento tarifario documentado. "
-                                "El AMBA recibió los aumentos más abruptos (enero y febrero 2024); "
-                                "el Interior absorbió el shock del Fondo de Compensación de forma más gradual y heterogénea.",
-        "rs_seasonal_title":   "Amplitud estacional: AMBA vs Interior",
-        "rs_seasonal_explainer": "La **amplitud estacional** mide cuánto varía el ridership a lo largo del año en relación a su promedio anual. "
-                                  "Se calcula como el cociente entre el mes pico y el mes valle de cada año. "
-                                  "Un valor de 1.5 significa que el mes más activo tiene un 50% más viajes que el mes más tranquilo. "
-                                  "El AMBA tiene **menor amplitud estacional** que el Interior — "
-                                  "esto se explica porque el AMBA tiene mayor proporción de viajes laborales formales, "
-                                  "que son más uniformes a lo largo del año, mientras que el Interior tiene mayor peso relativo "
-                                  "de viajes estacionales (turismo, economías regionales, ferias). "
-                                  "Una hipótesis alternativa: el AMBA tiene mayor elasticidad al precio y las subas tarifarias "
-                                  "afectan de forma despareja los meses de menor demanda (enero, julio), "
-                                  "comprimiendo la variación estacional.",
-        "rs_prov_explainer":   "Volumen total de viajes por provincia desde 2020. "
-                                "Buenos Aires (provincia) lidera por tamaño poblacional y extensión del GBA. "
-                                "Mendoza, Santa Fe y San Juan muestran redes urbanas consolidadas. "
-                                "Nota: se excluyen los registros con jurisdicción nacional (trenes y subtes de CABA "
-                                "aparecen bajo sus empresas operadoras, no bajo una provincia específica).",
-        "rs_prov_caption":     "Excluye JN (Jurisdicción Nacional) y valores nulos.",
-
-        # ── Analysis ──────────────────────────────────────────────────────
-        "an_heatmap_title":    "Ridership promedio: día de semana × mes",
-        "an_heatmap_explainer": "Cada celda muestra el **promedio de viajes diarios** para esa combinación de día de la semana y mes del año, "
-                                 "calculado sobre todos los años disponibles (2020–presente). "
-                                 "Los colores más oscuros indican más viajes. "
-                                 "El patrón típico: los días hábiles (lunes a viernes) tienen más viajes que el fin de semana, "
-                                 "y los meses de mayor actividad son marzo-abril y agosto-septiembre (picos de actividad laboral en Argentina). "
-                                 "Enero y julio muestran caídas por vacaciones de verano e invierno respectivamente.",
-        "an_heatmap_color":    "Avg viajes/día",
-        "an_stl_title":        "Descomposición STL de la serie temporal",
-        "an_stl_explainer":    """**¿Qué es STL?** STL *(Seasonal-Trend decomposition using LOESS)* es un método estadístico que descompone \
-una serie temporal en tres componentes independientes:
-
-- 🔵 **Tendencia**: la dirección de largo plazo, sin ruido ni estacionalidad. Refleja cambios estructurales \
-como la pandemia, la recuperación económica o el impacto de las subas tarifarias.
-- 🟢 **Estacionalidad**: el patrón que se repite regularmente en cada ciclo (semanal o anual). \
-Por ejemplo, menos viajes los domingos o en enero por las vacaciones de verano.
-- ⚫ **Residuo**: lo que queda después de quitar tendencia y estacionalidad. En condiciones normales es ruido aleatorio. \
-Un residuo inusualmente alto o bajo indica un día que no sigue el patrón esperado.
-
-**¿Qué es una anomalía?** Un día donde el residuo supera **3 desvíos estándar** de su media histórica. \
-Esto señala eventos inesperados como huelgas de transporte, feriados no contemplados o cortes de servicio.
-
-⚠️ **Importante**: el colapso de COVID-19 *no aparece como anomalía* porque fue tan prolongado y sostenido \
-que el modelo lo absorbió en la tendencia. STL detecta sorpresas locales, no cambios estructurales graduales.""",
-        "an_stl_mode":         "Modo",
-        "an_stl_all":          "Todos los modos",
-        "an_stl_season":       "Período de estacionalidad",
-        "an_stl_weekly":       "Semanal (7 días)",
-        "an_stl_annual":       "Anual (365 días)",
-        "an_stl_run":          "Calcular descomposición",
-        "an_stl_running":      "Corriendo STL… (puede tardar unos segundos)",
-        "an_stl_observed":     "Observado",
-        "an_stl_trend":        "Tendencia",
-        "an_stl_seasonal":     "Estacionalidad",
-        "an_stl_residual":     "Residuo",
-        "an_stl_anomaly":      "Anomalía",
-        "an_stl_component":    "Componente",
-        "an_anom_title":       "anomalías detectadas",
-        "an_anom_date":        "Fecha",
-        "an_anom_z":           "Z-score",
-        "an_anom_event":       "Evento conocido",
-        "an_anom_explainer":   "Las anomalías sin evento conocido son las más interesantes — "
-                                "corresponden a días donde algo inusual ocurrió pero no está registrado en nuestra lista de eventos. "
-                                "Un z-score de 3 significa que el residuo está 3 desvíos estándar por encima o debajo de lo esperado.",
-
-        "kpi_explainer": "Métricas calculadas sobre el período y los modos seleccionados en el panel lateral. "
-                          "El **día pico** es el día individual con más viajes registrados. "
-                          "El **promedio diario** incluye fines de semana y feriados, por eso es menor que un típico día hábil.",
-
-        # ── Forecast ──────────────────────────────────────────────────────
-        "tab_forecast":       "🔮 Predicción",
-        "fc_run":             "Generar predicción",
-        "fc_running":         "Entrenando modelos… (puede tardar 20–40 segundos)",
-        "fc_horizon":         "Meses a predecir",
-        "fc_title":           "Predicción de ridership — próximos {n} meses",
-        "fc_actual":          "Histórico (real)",
-        "fc_fitted":          "Histórico (modelo)",
-        "fc_forecast":        "Predicción",
-        "fc_band":            "Intervalo de confianza 80%",
-        "fc_summary_title":   "Resumen de la predicción",
-        "fc_mode":            "Modo",
-        "fc_last":            "Último valor real",
-        "fc_mean":            "Promedio predicho",
-        "fc_change":          "Cambio estimado (vs últimos 6 meses)",
-        "fc_direction_up":    "↑ Suba",
-        "fc_direction_down":  "↓ Baja",
-        "fc_direction_flat":  "→ Estable",
-        "fc_explainer": """**¿Cómo funciona esta predicción?**
-
-Se usa **Prophet**, un modelo de series temporales desarrollado por Meta, entrenado con los datos mensuales \
-de ridership desde 2020. El modelo aprende tres cosas por separado:
-
-- 📈 **Tendencia**: la dirección general de largo plazo (crecimiento o caída).
-- 📅 **Estacionalidad anual**: los patrones que se repiten cada año \
-(enero siempre tiene menos viajes; marzo y agosto son picos).
-- 🎌 **Feriados argentinos**: los feriados nacionales se modelan explícitamente \
-como caídas puntuales de demanda.
-
-Además se incorporan dos **regresores externos**:
-
-- 💸 **Presión tarifaria acumulada**: suma de todos los aumentos tarifarios que entraron en vigencia \
-hasta cada mes (desde el congelamiento de 2022 hasta los aumentos escalonados de 2025–2026). \
-No es un simple interruptor on/off — refleja la magnitud acumulada del ajuste tarifario.
-- 📉 **Shock macroeconómico**: variable binaria que captura el cambio de régimen desde la \
-devaluación de diciembre 2023 (+118%) y el recorte de subsidios, independientemente de las tarifas.
-
-Los **puntos de cambio estructural** (changepoints) se fijan en las fechas exactas de cada aumento \
-tarifario y evento macro, en lugar de dejarse descubrir automáticamente — esto mejora la precisión \
-del modelo en períodos de alta volatilidad.
-
-**¿Qué significa el intervalo de confianza?** La banda sombreada representa el rango \
-donde el modelo espera que caigan el 80% de los valores futuros. Un intervalo más ancho \
-indica mayor incertidumbre.
-
-⚠️ **Limitación importante**: el modelo no puede anticipar eventos futuros desconocidos \
-(nuevas subas de tarifas, paros, cambios de política). La predicción asume que el nivel \
-actual de presión tarifaria se mantiene.""",
-
-        "days":   ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"],
-        "months": ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
-        "amba_labels": {"SI": "AMBA", "NO": "Interior"},
-    },
-    "en": {
-        "page_title":       "SUBE — Public Transport Analytics",
-        "sidebar_title":    "SUBE Analytics",
-        "sidebar_source":   "Data: datos.transporte.gob.ar",
-        "periodo":          "Period",
-        "modos":            "Transport modes",
-        "show_events":      "Show historical events",
-        "refresh":          "🔄 Refresh data",
-        "data_until":       "Data through",
-        "kpi_total":        "Total trips",
-        "kpi_peak":         "Peak day",
-        "kpi_avg":          "Daily average",
-        "kpi_top_mode":     "Dominant mode",
-        "kpi_trips":        "trips",
-        "tab_overview":     "📊 Overview",
-        "tab_covid":        "🦠 COVID-19",
-        "tab_modal":        "🔄 Modal Substitution",
-        "tab_resilience":   "💪 Resilience",
-        "tab_analysis":     "🔬 Analysis",
-
-        # ── Overview ──────────────────────────────────────────────────────
-        "ov_series_title":    "Daily ridership by mode",
-        "ov_series_explainer": "Number of trips recorded per day for each transport mode. "
-                               "The thin line shows the raw daily value; the thick line is the **7-day moving average**, "
-                               "which smooths out normal weekday/weekend variation to reveal the underlying trend. "
-                               "Dotted vertical lines mark key historical events.",
-        "ov_series_y":        "Trips",
-        "ov_split_title":     "Modal split (monthly)",
-        "ov_split_explainer": "**Modal split** shows what percentage of total trips each mode accounts for each month. "
-                               "A stable value means modes grow or fall at the same rate. "
-                               "Shifts reveal modal substitution — for example, when the SUBTE closed in 2020, "
-                               "its share dropped to near zero and COLECTIVO absorbed most of the remaining trips.",
-        "ov_split_y":         "Share (%)",
-        "ov_empresas_title":  "Top 10 operators by total ridership (2020–present)",
-        "ov_empresas_explainer": "The ten operators with the highest cumulative trip count since 2020. "
-                                  "Each company may operate one or more modes. EMOVA (SUBTE) dominates in absolute terms "
-                                  "because it holds the concession for the entire Buenos Aires subway network.",
-        "ov_empresas_y":      "Total trips",
-        "ov_empresas_x":      "Operator",
-
-        # ── COVID ─────────────────────────────────────────────────────────
-        "cv_collapse_title":    "COVID-19 collapse: monthly ridership by mode",
-        "cv_collapse_explainer": "In March 2020, the national government declared the ASPO (mandatory social isolation), "
-                                  "Argentina's first strict lockdown. The impact was immediate but **asymmetric across modes**: "
-                                  "SUBTE collapsed **92%** in April 2020 because it almost exclusively serves office workers in CABA, "
-                                  "TREN fell **87%**, but COLECTIVO only **58%** — buses kept running for essential workers "
-                                  "(healthcare, logistics, security) who couldn't work from home.",
-        "cv_subst_title":       "Modal substitution: month-over-month % change (SUBTE vs COLECTIVO)",
-        "cv_subst_explainer":   "This chart shows the **month-over-month change** for each mode, not absolute volume. "
-                                 "It reveals whether one mode is growing faster or slower than another in the same period. "
-                                 "Throughout 2021, SUBTE consistently grew faster than COLECTIVO — "
-                                 "suggesting that once restrictions lifted, users returned to the subway more eagerly, "
-                                 "possibly due to speed and reliability advantages.",
-        "cv_yoy_title":         "Year-over-year % change by mode",
-        "cv_yoy_explainer":     "Compares each month to the same month in the prior year, removing natural seasonality "
-                                 "(e.g. January always has fewer trips than March). "
-                                 "Positive bars = growth vs prior year. Negative bars = decline. "
-                                 "2021 shows enormous positive bars because it compares against the 2020 lockdown floor.",
-        "cv_yoy_y":             "Δ% vs previous year",
-
-        # ── Modal substitution ────────────────────────────────────────────
-        "ms_mom_title":       "Month-over-month % change by mode — full series",
-        "ms_mom_explainer":   "Month-over-month change for each mode across the entire series. "
-                               "Reveals how each historical event affected each mode differently: "
-                               "SUBTE reacts more violently to discrete shocks (lockdowns, strikes) because it has fewer substitutes; "
-                               "COLECTIVO is more resilient because it serves areas without subway or rail coverage. "
-                               "Historical and fare events are annotated for easy reading.",
-        "ms_share_title":     "Modal share — monthly evolution",
-        "ms_share_explainer": "**Modal split** shows what percentage of total trips each mode accounts for each month. "
-                               "A sustained shift indicates structural substitution, not a one-off shock. "
-                               "For example, if SUBTE recovers share faster than COLECTIVO post-COVID, "
-                               "it suggests the passengers who returned first had no alternative to the subway.",
-        "ms_yoy_title":       "Year-over-year % — all modes",
-        "ms_yoy_explainer":   "Compares each month to the same month in the prior year to remove seasonality. "
-                               "Shows whether modes grow or fall at the same rate around each event, "
-                               "or whether one diverges from the rest.",
-
-        # ── Resilience ────────────────────────────────────────────────────
-        "rs_amba_title":       "Monthly ridership: AMBA vs Interior",
-        "rs_amba_explainer":   "**AMBA** (Buenos Aires Metropolitan Area) includes CABA and Greater Buenos Aires. "
-                                "**Interior** refers to all other provinces. "
-                                "The chart shows total monthly trips in absolute values. "
-                                "AMBA concentrates most of the country's ridership due to population density. "
-                                "The post-2024 AMBA decline reflects the loss of national subsidies; "
-                                "Interior shows greater stability because each province managed its own fare schedule.",
-        "rs_milei_title":      "Fare hike effect 2023–present: AMBA vs Interior",
-        "rs_milei_explainer":  "Zoom on the period from January 2023. "
-                                "Vertical lines show each documented fare hike. "
-                                "AMBA received the most abrupt increases (January and February 2024); "
-                                "Interior absorbed the Compensation Fund shock more gradually and unevenly.",
-        "rs_seasonal_title":   "Seasonal amplitude: AMBA vs Interior",
-        "rs_seasonal_explainer": "**Seasonal amplitude** measures how much ridership varies across the year relative to its annual average. "
-                                  "Computed as the ratio of the peak month to the trough month for each year. "
-                                  "A value of 1.5 means the busiest month has 50% more trips than the quietest. "
-                                  "The AMBA has **lower seasonal amplitude** than the Interior — "
-                                  "likely because AMBA trips are dominated by formal commuting, which is more uniform throughout the year, "
-                                  "while Interior ridership has a higher relative weight of seasonal trips "
-                                  "(tourism, regional economies, fairs). "
-                                  "An alternative hypothesis: AMBA demand is more price-elastic, and fare hikes "
-                                  "disproportionately suppress low-demand months (January, July), "
-                                  "compressing the seasonal range.",
-        "rs_prov_explainer":   "Total trip volume by province since 2020. "
-                                "Buenos Aires province leads due to population size and the extent of Greater Buenos Aires. "
-                                "Mendoza, Santa Fe, and San Juan show consolidated urban networks. "
-                                "Note: records with national jurisdiction (CABA trains and subway) are excluded here — "
-                                "they appear under their operating companies, not a specific province.",
-        "rs_prov_caption":     "Excludes JN (National Jurisdiction) and null values.",
-
-        # ── Analysis ──────────────────────────────────────────────────────
-        "an_heatmap_title":    "Average ridership: weekday × month",
-        "an_heatmap_explainer": "Each cell shows the **average daily trips** for that combination of weekday and calendar month, "
-                                 "calculated across all available years (2020–present). "
-                                 "Darker colors indicate more trips. "
-                                 "The typical pattern: weekdays (Mon–Fri) have more trips than weekends, "
-                                 "and peak months are March–April and August–September (Argentina's peak work periods). "
-                                 "January and July show dips due to summer and winter school holidays respectively.",
-        "an_heatmap_color":    "Avg trips/day",
-        "an_stl_title":        "STL time series decomposition",
-        "an_stl_explainer":    """**What is STL?** STL *(Seasonal-Trend decomposition using LOESS)* is a statistical method that \
-separates a time series into three independent components:
-
-- 🔵 **Trend**: the long-term direction, free of noise and seasonality. Captures structural changes \
-like the pandemic, economic recovery, or the impact of fare hikes.
-- 🟢 **Seasonality**: the regularly repeating pattern within each cycle (weekly or annual). \
-For example, fewer trips on Sundays or in January during summer holidays.
-- ⚫ **Residual**: what remains after removing trend and seasonality. Under normal conditions it looks like random noise. \
-An unusually high or low residual flags a day that doesn't follow the expected pattern.
-
-**What is an anomaly?** A day where the residual exceeds **3 standard deviations** from its historical mean. \
-This highlights unexpected events such as transport strikes, unplanned holidays, or service disruptions.
-
-⚠️ **Important**: the COVID-19 collapse *does not appear as an anomaly* because it was so prolonged and sustained \
-that the model absorbed it into the trend. STL detects local surprises, not gradual structural shifts.""",
-        "an_stl_mode":         "Mode",
-        "an_stl_all":          "All modes",
-        "an_stl_season":       "Seasonality period",
-        "an_stl_weekly":       "Weekly (7 days)",
-        "an_stl_annual":       "Annual (365 days)",
-        "an_stl_run":          "Run decomposition",
-        "an_stl_running":      "Running STL… (this may take a few seconds)",
-        "an_stl_observed":     "Observed",
-        "an_stl_trend":        "Trend",
-        "an_stl_seasonal":     "Seasonality",
-        "an_stl_residual":     "Residual",
-        "an_stl_anomaly":      "Anomaly",
-        "an_stl_component":    "Component",
-        "an_anom_title":       "anomalies detected",
-        "an_anom_date":        "Date",
-        "an_anom_z":           "Z-score",
-        "an_anom_event":       "Known event",
-        "an_anom_explainer":   "Anomalies without a known event label are the most interesting — "
-                                "they correspond to days where something unusual happened that isn't in our events list. "
-                                "A z-score of 3 means the residual is 3 standard deviations above or below what was expected.",
-
-        "kpi_explainer": "Metrics calculated over the period and modes selected in the sidebar. "
-                          "**Peak day** is the single day with the highest recorded trips. "
-                          "**Daily average** includes weekends and holidays, so it is lower than a typical workday.",
-
-        # ── Forecast ──────────────────────────────────────────────────────
-        "tab_forecast":       "🔮 Forecast",
-        "fc_run":             "Generate forecast",
-        "fc_running":         "Training models… (may take 20–40 seconds)",
-        "fc_horizon":         "Months to forecast",
-        "fc_title":           "Ridership forecast — next {n} months",
-        "fc_actual":          "Actual (observed)",
-        "fc_fitted":          "Actual (model fit)",
-        "fc_forecast":        "Forecast",
-        "fc_band":            "80% confidence interval",
-        "fc_summary_title":   "Forecast summary",
-        "fc_mode":            "Mode",
-        "fc_last":            "Last actual value",
-        "fc_mean":            "Mean forecast",
-        "fc_change":          "Est. change (vs last 6 months)",
-        "fc_direction_up":    "↑ Rising",
-        "fc_direction_down":  "↓ Falling",
-        "fc_direction_flat":  "→ Stable",
-        "fc_explainer": """**How does this forecast work?**
-
-This uses **Prophet**, a time series model developed by Meta, trained on monthly ridership data since 2020. \
-The model learns three things separately:
-
-- 📈 **Trend**: the general long-term direction (growth or decline).
-- 📅 **Annual seasonality**: patterns that repeat each year \
-(January always has fewer trips; March and August are peaks).
-- 🎌 **Argentine public holidays**: national holidays are explicitly modelled \
-as point-in-time demand drops.
-
-Two **external regressors** are also included:
-
-- 💸 **Cumulative fare pressure**: the sum of all fare increases in effect up to each month \
-(from the end of the 3-year freeze in 2022 through the staged hikes of 2025–2026). \
-Not a simple on/off switch — it reflects the accumulated magnitude of fare adjustments.
-- 📉 **Macro shock**: a binary variable capturing the regime change triggered by the \
-December 2023 devaluation (+118%) and subsidy cuts, independent of fare levels.
-
-**Structural changepoints** are fixed at the exact dates of each fare hike and macro event, \
-rather than being discovered automatically — this improves model accuracy during high-volatility periods.
-
-**What does the confidence interval mean?** The shaded band shows the range where \
-the model expects 80% of future values to fall. A wider band means higher uncertainty.
-
-⚠️ **Important limitation**: the model cannot anticipate unknown future events \
-(new fare increases, strikes, policy changes). The forecast assumes the current level \
-of fare pressure remains unchanged.""",
-
-        "days":   ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-        "months": ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
-        "amba_labels": {"SI": "AMBA", "NO": "Interior"},
-    },
-}
-
-MODE_LABELS = {
-    "es": {"COLECTIVO": "Colectivo (Bus)", "TREN": "Tren", "SUBTE": "Subte"},
-    "en": {"COLECTIVO": "Bus", "TREN": "Train", "SUBTE": "Subway"},
-}
+from dashboard.strings import STRINGS, MODE_LABELS
 
 # ── Session state ──────────────────────────────────────────────────────────
 if "lang" not in st.session_state:
@@ -563,7 +139,6 @@ def load_by_provincia() -> pd.DataFrame:
           AND provincia IS NOT NULL
         GROUP BY provincia
         ORDER BY total DESC
-        LIMIT 20
     """).df()
 
 
@@ -785,6 +360,11 @@ def explainer(key: str) -> None:
         st.markdown(t(key))
 
 
+def finding(key: str) -> None:
+    """Render a permanently-visible finding callout (not collapsible)."""
+    st.info(t(key), icon="💡")
+
+
 # ── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
     col_es, col_en = st.columns(2)
@@ -797,10 +377,7 @@ with st.sidebar:
             st.session_state.lang = "en"
             st.rerun()
 
-    st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/SUBE_Logo.svg/320px-SUBE_Logo.svg.png",
-        width=140,
-    )
+    st.image("dashboard/assets/sube_logo.png", width=140)
     st.title(t("sidebar_title"))
     st.caption(t("sidebar_source"))
     st.divider()
@@ -883,6 +460,63 @@ with c4:
         st.metric(t("kpi_top_mode"), mode_label(top_mode))
 
 st.caption(t("kpi_explainer"))
+
+# ── Key findings row ───────────────────────────────────────────────────────
+# Compute modal share for the most recent month in the full dataset
+_all_monthly = load_monthly()
+_last_month  = _all_monthly["month_start"].max()
+_last_month_df = _all_monthly[_all_monthly["month_start"] == _last_month]
+_last_total    = _last_month_df["total_usos"].sum()
+_mode_share    = (
+    _last_month_df.set_index("modo")["total_usos"] / _last_total * 100
+    if _last_total > 0 else {}
+)
+_month_name   = _last_month.strftime("%b %Y").capitalize()
+_share_sub_es = f"proporción de viajes · {_month_name}"
+_share_sub_en = f"share of rides · {_month_name}"
+_share_sub    = _share_sub_es if st.session_state.lang == "es" else _share_sub_en
+
+f1, f2, f3, f4, f5 = st.columns(5)
+with f1:
+    _val = f"{_mode_share.get('COLECTIVO', 0):.1f}%"
+    st.metric(t("finding_bus_drop"), _val, _share_sub)
+with f2:
+    _val = f"{_mode_share.get('TREN', 0):.1f}%"
+    st.metric(t("finding_tren_drop"), _val, _share_sub)
+with f3:
+    _val = f"{_mode_share.get('SUBTE', 0):.1f}%"
+    st.metric(t("finding_subte_drop"), _val, _share_sub)
+with f4:
+    # Compute cumulative compounded fare increase over the past 12 months
+    # Window: first day of (current month - 12) → last day of previous month
+    import datetime as _dt
+    _today      = _dt.date.today()
+    _win_end    = (_dt.date(_today.year, _today.month, 1) - _dt.timedelta(days=1))
+    _win_start  = _dt.date(
+        _win_end.year - 1 if _win_end.month < 12 else _win_end.year,
+        (_win_end.month % 12) + 1, 1
+    )
+    _amba_scopes = {"national", "amba", "amba_local"}
+    _compound = 1.0
+    _n_hikes  = 0
+    for _h in FARE_HIKES:
+        _hdate = _dt.date.fromisoformat(_h["date"])
+        if (_win_start <= _hdate <= _win_end
+                and _h["scope"] in _amba_scopes
+                and _h["magnitude"] > 0):
+            _compound *= (1 + _h["magnitude"] / 100)
+            _n_hikes += 1
+    _cumulative = (_compound - 1) * 100
+    _fare_sub   = (
+        f"{_n_hikes} aumentos en los últimos 12 meses"
+        if st.session_state.lang == "es"
+        else f"{_n_hikes} hikes in the last 12 months"
+    )
+    st.metric(t("finding_amba_shock"), f"+{_cumulative:.0f}%", _fare_sub)
+with f5:
+    st.metric(t("finding_seasonal"), "Mar · Ago",
+              t("finding_seasonal_sub"))
+
 st.divider()
 
 
@@ -921,7 +555,7 @@ with tab_ov:
         fig = add_event_annotations(fig)
 
     fig.update_layout(
-        height=450, template="plotly_white",
+        height=675, template="plotly_white",
         yaxis_title=t("ov_series_y"),
         legend_title=None, hovermode="x unified",
     )
@@ -947,8 +581,49 @@ with tab_ov:
     )
     if show_events:
         fig2 = add_event_annotations(fig2)
-    fig2.update_layout(height=350, yaxis_ticksuffix="%", hovermode="x unified")
+    fig2.update_layout(height=368, yaxis_ticksuffix="%", hovermode="x unified",
+                       yaxis=dict(range=[0, 125]))
     st.plotly_chart(fig2, width="stretch")
+
+    # Province histogram (moved from Resilience tab)
+    _prov_title = ("Viajes totales por provincia (2020–presente)" if st.session_state.lang == "es"
+                   else "Total trips by province (2020–present)")
+    st.subheader(_prov_title)
+    with st.expander("ℹ️ " + ("¿Cómo leer este gráfico?" if st.session_state.lang == "es" else "How to read this chart?")):
+        st.markdown(t("rs_prov_explainer"))
+
+    prov_df = load_by_provincia()
+    fig_prov = px.bar(
+        prov_df.sort_values("total"),
+        x="total", y="provincia",
+        orientation="h",
+        labels={"total": t("ov_empresas_y"), "provincia": "Provincia"},
+        template="plotly_white",
+        color="total",
+        color_continuous_scale="Blues",
+    )
+    fig_prov.update_layout(height=max(390, len(prov_df) * 22), coloraxis_showscale=False)
+    st.plotly_chart(fig_prov, width="stretch")
+    st.caption(t("rs_prov_caption"))
+
+    # Heatmap (moved from Analysis tab)
+    st.subheader(t("an_heatmap_title"))
+    explainer("an_heatmap_explainer")
+
+    heatmap_df = load_heatmap()
+    pivot = heatmap_df.pivot(index="day_of_week", columns="month", values="avg_usos")
+    pivot.index   = STRINGS[st.session_state.lang]["days"]
+    pivot.columns = STRINGS[st.session_state.lang]["months"]
+
+    fig_heat = px.imshow(
+        pivot,
+        color_continuous_scale="Blues",
+        labels={"color": t("an_heatmap_color")},
+        template="plotly_white",
+        aspect="auto",
+    )
+    fig_heat.update_layout(height=320)
+    st.plotly_chart(fig_heat, width="stretch")
 
     st.subheader(t("ov_empresas_title"))
     explainer("ov_empresas_explainer")
@@ -967,7 +642,7 @@ with tab_ov:
         labels={"total_usos": t("ov_empresas_y"), "empresa_short": t("ov_empresas_x"), "modo_label": ""},
         template="plotly_white",
     )
-    fig3.update_layout(height=400)
+    fig3.update_layout(height=420)
     st.plotly_chart(fig3, width="stretch")
 
 
@@ -976,9 +651,9 @@ with tab_ov:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_cv:
 
-    st.subheader(t("cv_collapse_title"))
-    explainer("cv_collapse_explainer")
+    finding("cv_finding")
 
+    # Load covid data for all charts in this tab
     covid_monthly = monthly[
         (monthly["month_start"] >= "2020-01-01") &
         (monthly["month_start"] <= "2022-07-01") &
@@ -986,17 +661,93 @@ with tab_cv:
     ].copy()
     covid_monthly["modo_label"] = covid_monthly["modo"].map(mode_label)
 
-    fig4 = px.line(
-        covid_monthly, x="month_start", y="total_usos",
-        color="modo_label",
-        color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
-        markers=True,
-        labels={"total_usos": t("ov_series_y"), "month_start": "", "modo_label": ""},
-        template="plotly_white",
+    st.subheader(t("cv_collapse_title"))
+    explainer("cv_collapse_explainer")
+
+    _norm_base = covid_monthly[covid_monthly["month_start"] == "2020-01-01"].set_index("modo")["total_usos"]
+    _norm_df   = covid_monthly.copy()
+    _norm_df["index_val"] = _norm_df.apply(
+        lambda r: (r["total_usos"] / _norm_base[r["modo"]]) * 100
+        if r["modo"] in _norm_base.index else float("nan"), axis=1,
     )
-    fig4 = add_event_annotations(fig4)
-    fig4.update_layout(height=420, hovermode="x unified")
-    st.plotly_chart(fig4, width="stretch")
+    _norm_df = _norm_df.dropna(subset=["index_val"])
+
+    if not _norm_df.empty:
+        _idx_label = "Índice (ene 2020 = 100)" if st.session_state.lang == "es" else "Index (Jan 2020 = 100)"
+        fig_norm = px.line(
+            _norm_df, x="month_start", y="index_val",
+            color="modo_label",
+            color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
+            markers=True,
+            labels={"index_val": _idx_label, "month_start": "", "modo_label": ""},
+            template="plotly_white",
+        )
+        fig_norm.add_hline(y=100, line_dash="dash", line_color="grey", opacity=0.4,
+                           annotation_text="Ene 2020 = 100" if st.session_state.lang == "es" else "Jan 2020 = 100")
+        fig_norm = add_event_annotations(fig_norm)
+        # Annotate each mode's April 2020 drop % directly on the chart
+        _drop_map = {
+            "COLECTIVO": ("−58%", "Bus −58%"),
+            "TREN":      ("−87%", "Train −87%"),
+            "SUBTE":     ("−92%", "Subway −92%"),
+        }
+        _apr2020 = pd.Timestamp("2020-04-01")
+        for _mode in selected_modes:
+            _apr_row = _norm_df[(_norm_df["modo"] == _mode) &
+                                (_norm_df["month_start"] == _apr2020)]
+            if not _apr_row.empty:
+                _lbl_es, _lbl_en = _drop_map.get(_mode, ("", ""))
+                _lbl = _lbl_es if st.session_state.lang == "es" else _lbl_en
+                fig_norm.add_annotation(
+                    x=_apr2020, y=float(_apr_row["index_val"].iloc[0]),
+                    text=f"<b>{_lbl}</b>",
+                    showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5,
+                    arrowcolor=MODE_COLORS[_mode], ax=0, ay=-36,
+                    font=dict(size=11, color=MODE_COLORS[_mode]),
+                    bgcolor="white", borderpad=3,
+                )
+        fig_norm.update_layout(height=675, hovermode="x unified")
+        st.plotly_chart(fig_norm, width="stretch")
+
+    st.divider()
+
+    # 4e — Modal recovery chart: MoM % for the 2021–2022 recovery window
+    st.subheader(t("cv_subst_recovery_title"))
+    explainer("cv_subst_recovery_explainer")
+
+    _rec_modes = [m for m in selected_modes if m in ("COLECTIVO", "SUBTE", "TREN")]
+    recovery_monthly = monthly[
+        (monthly["month_start"] >= "2020-11-01") &
+        (monthly["month_start"] <= "2022-07-01") &
+        (monthly["modo"].isin(_rec_modes))
+    ].copy().sort_values(["modo", "month_start"])
+    recovery_monthly["modo_label"] = recovery_monthly["modo"].map(mode_label)
+
+    # Index to 100 at Nov 2020 — fixed baseline so both modes start at the same point
+    _rec_base = (recovery_monthly[recovery_monthly["month_start"] == "2020-11-01"]
+                 .set_index("modo")["total_usos"])
+    recovery_monthly["index_val"] = recovery_monthly.apply(
+        lambda r: (r["total_usos"] / _rec_base[r["modo"]]) * 100
+        if r["modo"] in _rec_base.index else float("nan"), axis=1,
+    )
+    recovery_monthly = recovery_monthly.dropna(subset=["index_val"])
+
+    if not recovery_monthly.empty:
+        _rec_label = ("Índice (nov 2020 = 100)" if st.session_state.lang == "es"
+                      else "Index (Nov 2020 = 100)")
+        fig_rec = px.line(
+            recovery_monthly, x="month_start", y="index_val",
+            color="modo_label",
+            color_discrete_map={mode_label(m): cmap[m] for m in _rec_modes if m in cmap},
+            markers=True,
+            labels={"index_val": _rec_label, "month_start": "", "modo_label": ""},
+            template="plotly_white",
+        )
+        fig_rec.add_hline(y=100, line_dash="dash", line_color="grey", opacity=0.4,
+                          annotation_text="Nov 2020 = 100")
+        fig_rec = add_event_annotations(fig_rec)
+        fig_rec.update_layout(height=570, hovermode="x unified")
+        st.plotly_chart(fig_rec, width="stretch")
 
     st.divider()
 
@@ -1019,7 +770,7 @@ with tab_cv:
         template="plotly_white",
     )
     fig6.add_hline(y=0, line_color="black", line_width=1)
-    fig6.update_layout(height=400, yaxis_ticksuffix="%", hovermode="x unified")
+    fig6.update_layout(height=600, yaxis_ticksuffix="%", hovermode="x unified")
     st.plotly_chart(fig6, width="stretch")
 
 
@@ -1028,36 +779,83 @@ with tab_cv:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_ms:
 
-    # MoM % — all modes, full date range, all events annotated
-    st.subheader(t("ms_mom_title"))
-    explainer("ms_mom_explainer")
+    # Monthly change — one chart per mode so shapes are directly comparable
+    _ms_title = ("Variación mensual por modo" if st.session_state.lang == "es"
+                 else "Monthly change by mode")
+    _ms_expl  = (
+        "El **SUBTE** muestra picos más pronunciados que los otros modos, lo que sugiere que "
+        "tiene menor sustitución posible ante shocks discretos (lockdowns, paros, cortes de servicio): "
+        "quien depende del subte no tendría una alternativa inmediata comparable. "
+        "El **COLECTIVO** muestra mayor resiliencia, posiblemente porque cubre zonas sin red de subte o tren."
+        if st.session_state.lang == "es" else
+        "**SUBTE** shows sharper spikes than the other modes, suggesting it has fewer substitutes "
+        "when discrete shocks hit (lockdowns, strikes, service disruptions): "
+        "subway riders may have no comparable immediate alternative. "
+        "**COLECTIVO** shows greater resilience, possibly because it serves areas without subway or rail coverage."
+    )
+    st.subheader(_ms_title)
+    with st.expander("ℹ️ " + ("¿Cómo leer este gráfico?" if st.session_state.lang == "es"
+                               else "How to read this chart?")):
+        st.markdown(_ms_expl)
 
-    ms_df = monthly[
+    _ms_full = monthly[
         (monthly["month_start"] >= start_date) &
         (monthly["month_start"] <= end_date) &
         (monthly["modo"].isin(selected_modes))
     ].copy().sort_values(["modo", "month_start"])
-    ms_df["mom_pct"]    = ms_df.groupby("modo")["total_usos"].pct_change() * 100
-    ms_df               = ms_df.dropna(subset=["mom_pct"])
-    ms_df["modo_label"] = ms_df["modo"].map(mode_label)
+    _ms_full["mom_pct"]    = _ms_full.groupby("modo")["total_usos"].pct_change() * 100
+    _ms_full               = _ms_full.dropna(subset=["mom_pct"])
 
-    fig_ms1 = px.line(
-        ms_df, x="month_start", y="mom_pct",
-        color="modo_label",
-        color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
-        markers=True,
-        labels={"mom_pct": "MoM %", "month_start": "", "modo_label": ""},
-        template="plotly_white",
-    )
-    fig_ms1.add_hline(y=0, line_color="black", line_width=1, opacity=0.4)
-    if show_events:
-        fig_ms1 = add_event_annotations(fig_ms1)
-        fig_ms1 = add_fare_annotations(fig_ms1)
-    fig_ms1.update_layout(
-        height=420, yaxis_ticksuffix="%", hovermode="x unified",
-        yaxis=dict(range=[-100, 200]),  # clip outliers; full values still show on hover
-    )
-    st.plotly_chart(fig_ms1, width="stretch")
+    _mom_label   = "Variación mensual (%)" if st.session_state.lang == "es" else "Monthly change (%)"
+    _active_modes = [m for m in selected_modes if m in _ms_full["modo"].unique()]
+
+    if _active_modes:
+        from plotly.subplots import make_subplots
+        _n = len(_active_modes)
+        _fig_ms_sub = make_subplots(
+            rows=_n, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.02,
+            row_titles=[mode_label(m) for m in _active_modes],
+        )
+        for _i, _ms_mode in enumerate(_active_modes, start=1):
+            _ms_mode_df = _ms_full[_ms_full["modo"] == _ms_mode]
+            _fig_ms_sub.add_trace(
+                go.Scatter(
+                    x=_ms_mode_df["month_start"],
+                    y=_ms_mode_df["mom_pct"],
+                    mode="lines+markers",
+                    line=dict(color=cmap[_ms_mode], width=2),
+                    marker=dict(size=4),
+                    showlegend=False,
+                    hovertemplate="%{x|%b %Y}<br>%{y:.1f}%<extra></extra>",
+                ),
+                row=_i, col=1,
+            )
+            _fig_ms_sub.add_hline(
+                y=0, line_color="black", line_width=1, opacity=0.3,
+                row=_i, col=1,
+            )
+
+        # Set y-axis range explicitly for each subplot axis — update_yaxes with
+        # row/col is unreliable with shared_xaxes; direct yaxis keys are guaranteed.
+        _yaxis_updates = {f"yaxis{'' if i == 1 else i}": dict(range=[-50, 75], ticksuffix="%")
+                          for i in range(1, _n + 1)}
+        _fig_ms_sub.update_layout(
+            height=_n * 300,
+            template="plotly_white",
+            hovermode="x unified",
+            margin=dict(t=20, b=20),
+            **_yaxis_updates,
+        )
+        # Add event/fare annotations to the top subplot only (shared x-axis, lines span all rows)
+        if show_events:
+            _fig_ms_sub = add_event_annotations(_fig_ms_sub)
+            _fig_ms_sub = add_fare_annotations(_fig_ms_sub)
+        # Re-apply range after annotations (staggered_annotations calls update_yaxes
+        # without row/col, which resets all subplot axes to its auto-computed range)
+        _fig_ms_sub.update_layout(**_yaxis_updates)
+        st.plotly_chart(_fig_ms_sub, width="stretch")
 
     st.divider()
 
@@ -1083,7 +881,8 @@ with tab_ms:
     if show_events:
         fig_ms2 = add_event_annotations(fig_ms2)
         fig_ms2 = add_fare_annotations(fig_ms2)
-    fig_ms2.update_layout(height=380, yaxis_ticksuffix="%", hovermode="x unified")
+    fig_ms2.update_layout(height=570, yaxis_ticksuffix="%", hovermode="x unified",
+                          yaxis=dict(range=[0, 125]))
     st.plotly_chart(fig_ms2, width="stretch")
 
     st.divider()
@@ -1111,7 +910,7 @@ with tab_ms:
     if show_events:
         fig_ms3 = add_event_annotations(fig_ms3)
         fig_ms3 = add_fare_annotations(fig_ms3)
-    fig_ms3.update_layout(height=420, yaxis_ticksuffix="%", hovermode="x unified")
+    fig_ms3.update_layout(height=630, yaxis_ticksuffix="%", hovermode="x unified")
     st.plotly_chart(fig_ms3, width="stretch")
 
 
@@ -1127,6 +926,8 @@ with tab_rs:
 
     amba_plot           = amba_df.copy()
     amba_plot["region"] = amba_plot["amba"].map(amba_labels)
+
+    finding("rs_finding")
 
     # Dual y-axis so AMBA and Interior use independent scales
     st.subheader(t("rs_amba_title"))
@@ -1152,7 +953,7 @@ with tab_rs:
         fig7 = add_event_annotations(fig7)
 
     fig7.update_layout(
-        height=430,
+        height=645,
         hovermode="x unified",
         template="plotly_white",
         legend=dict(orientation="h", y=-0.15),
@@ -1176,6 +977,16 @@ with tab_rs:
 
     milei_df = amba_plot[amba_plot["month_start"] >= "2023-01-01"].copy()
 
+    # Compute 12-month rolling average on the full series, then filter to chart window
+    # (needs pre-2023 data to anchor the first rolling values)
+    _rolling_label = "Promedio móvil 12 meses" if lang == "es" else "12-month rolling avg"
+    for _amba_key, _region_label in amba_labels.items():
+        _full_region = amba_plot[amba_plot["amba"] == _amba_key].sort_values("month_start").copy()
+        _full_region["rolling_12"] = _full_region["recovery_index"].rolling(12, min_periods=6).mean()
+        _rolling_visible = _full_region[_full_region["month_start"] >= "2023-01-01"]
+        if not _rolling_visible.empty:
+            milei_df = milei_df  # reference kept; rolling added as separate trace below
+
     fig8 = px.line(
         milei_df, x="month_start", y="recovery_index",
         color="region",
@@ -1185,80 +996,64 @@ with tab_rs:
                 "month_start": "", "region": ""},
         template="plotly_white",
     )
+
+    # Overlay 12-month rolling average as dotted lines
+    for _amba_key, _region_label in amba_labels.items():
+        _full_region = amba_plot[amba_plot["amba"] == _amba_key].sort_values("month_start").copy()
+        _full_region["rolling_12"] = _full_region["recovery_index"].rolling(12, min_periods=6).mean()
+        _rolling_visible = _full_region[_full_region["month_start"] >= "2023-01-01"].dropna(subset=["rolling_12"])
+        if not _rolling_visible.empty:
+            fig8.add_scatter(
+                x=_rolling_visible["month_start"],
+                y=_rolling_visible["rolling_12"],
+                mode="lines",
+                line=dict(color=amba_colors[_amba_key], width=2.5, dash="dot"),
+                name=f"{_region_label} — {_rolling_label}",
+                showlegend=True,
+                hovertemplate=f"{_region_label} ({_rolling_label})<br>%{{x|%b %Y}}: %{{y:.1f}}<extra></extra>",
+            )
     fig8.add_hline(y=100, line_dash="dash", line_color="grey", opacity=0.4,
                    annotation_text="Ene 2020" if lang == "es" else "Jan 2020")
+
+    # 4d — Shade the Jan–Feb 2024 shock window and label the divergence
+    _shock_label = (
+        "Shock tarifario AMBA<br>+45% → +66%" if lang == "es"
+        else "AMBA fare shock<br>+45% → +66%"
+    )
+    fig8.add_vrect(
+        x0="2024-01-01", x1="2024-03-01",
+        fillcolor="#EF4444", opacity=0.08,
+        layer="below", line_width=0,
+    )
+    fig8.add_annotation(
+        x=pd.Timestamp("2024-02-01"), y=0.97, yref="paper",
+        text=f"<b>{_shock_label}</b>",
+        showarrow=False,
+        font=dict(size=10, color="#EF4444"),
+        xanchor="center", yanchor="top",
+        bgcolor="white", borderpad=3,
+    )
+
     fig8 = add_fare_annotations(fig8)
-    fig8.update_layout(height=380, hovermode="x unified")
+    fig8.update_layout(height=600, hovermode="x unified")
     st.plotly_chart(fig8, width="stretch")
 
     st.divider()
 
-    st.subheader(t("rs_seasonal_title"))
-    explainer("rs_seasonal_explainer")
+    # Province histogram and heatmap moved to Overview tab
 
-    # Compute peak/trough ratio per year per region (exclude 2020 — COVID distorts it)
-    amba_plot["year"]  = pd.to_datetime(amba_plot["month_start"]).dt.year
-    amba_plot["month"] = pd.to_datetime(amba_plot["month_start"]).dt.month
-    seasonal_amp = (
-        amba_plot[amba_plot["year"] >= 2021]
-        .groupby(["year", "region"])["total"]
-        .agg(peak="max", trough="min")
-        .reset_index()
-    )
-    seasonal_amp["amplitude"] = seasonal_amp["peak"] / seasonal_amp["trough"]
 
-    fig_sa = px.line(
-        seasonal_amp, x="year", y="amplitude",
-        color="region",
-        color_discrete_map={v: amba_colors[k] for k, v in amba_labels.items()},
-        markers=True,
-        labels={"amplitude": "Pico / Valle" if lang == "es" else "Peak / Trough",
-                "year": "", "region": ""},
-        template="plotly_white",
-    )
-    fig_sa.add_hline(y=1.0, line_dash="dash", line_color="grey", opacity=0.4)
-    fig_sa.update_layout(height=340, hovermode="x unified")
-    st.plotly_chart(fig_sa, width="stretch")
-    explainer("rs_prov_explainer")
-
-    prov_df = load_by_provincia()
-    fig9 = px.bar(
-        prov_df.sort_values("total"),
-        x="total", y="provincia",
-        orientation="h",
-        labels={"total": t("ov_empresas_y"), "provincia": "Provincia"},
-        template="plotly_white",
-        color="total",
-        color_continuous_scale="Blues",
-    )
-    fig9.update_layout(height=500, coloraxis_showscale=False)
-    st.plotly_chart(fig9, width="stretch")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB 4 — ANALYSIS
+# TAB 4 — ANOMALIES (STL decomposition + anomaly detection)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_an:
 
-    st.subheader(t("an_heatmap_title"))
-    explainer("an_heatmap_explainer")
-
-    heatmap_df = load_heatmap()
-    pivot = heatmap_df.pivot(index="day_of_week", columns="month", values="avg_usos")
-    pivot.index   = STRINGS[st.session_state.lang]["days"]
-    pivot.columns = STRINGS[st.session_state.lang]["months"]
-
-    fig10 = px.imshow(
-        pivot,
-        color_continuous_scale="Blues",
-        labels={"color": t("an_heatmap_color")},
-        template="plotly_white",
-        aspect="auto",
-    )
-    fig10.update_layout(height=320)
-    st.plotly_chart(fig10, width="stretch")
+    finding("an_finding")
 
     st.divider()
+
 
     st.subheader(t("an_stl_title"))
     explainer("an_stl_explainer")
@@ -1278,68 +1073,67 @@ with tab_an:
             horizontal=True,
         )
 
-    if st.button(t("an_stl_run"), type="primary"):
-        with st.spinner(t("an_stl_running")):
-            try:
-                from analytics.time_series import decompose_series, detect_anomalies
-                conn = get_conn()
-                result = decompose_series(
-                    conn,
-                    mode=None if stl_mode == "ALL" else stl_mode,
-                    period=stl_period,
+    # Auto-run on load / whenever controls change (cached by Streamlit's widget state)
+    with st.spinner(t("an_stl_running")):
+        try:
+            from analytics.time_series import decompose_series, detect_anomalies
+            conn = get_conn()
+            result = decompose_series(
+                conn,
+                mode=None if stl_mode == "ALL" else stl_mode,
+                period=stl_period,
+            )
+            if result:
+                anomalies = detect_anomalies(
+                    result["residual"],
+                    lang=st.session_state.lang,
                 )
-                if result:
-                    anomalies = detect_anomalies(
-                        result["residual"],
-                        lang=st.session_state.lang,
-                    )
 
-                    fig11 = go.Figure()
-                    for key, name, color, fill in [
-                        ("original", t("an_stl_observed"), "rgba(100,100,200,0.25)", True),
-                        ("trend",    t("an_stl_trend"),    "#2563EB",                False),
-                        ("seasonal", t("an_stl_seasonal"), "#16A34A",                False),
-                        ("residual", t("an_stl_residual"), "#94a3b8",                False),
-                    ]:
-                        s = result[key]
-                        fig11.add_scatter(
-                            x=s.index, y=s.values, name=name,
-                            line_color=color,
-                            fill="tozeroy" if fill else None,
-                            opacity=0.8 if fill else 1.0,
-                        )
-
-                    anom = anomalies[anomalies["is_anomaly"]]
+                fig11 = go.Figure()
+                for key, name, color, fill in [
+                    ("original", t("an_stl_observed"), "rgba(100,100,200,0.25)", True),
+                    ("trend",    t("an_stl_trend"),    "#2563EB",                False),
+                    ("seasonal", t("an_stl_seasonal"), "#16A34A",                False),
+                    ("residual", t("an_stl_residual"), "#94a3b8",                False),
+                ]:
+                    s = result[key]
                     fig11.add_scatter(
-                        x=anom["fecha"], y=anom["residual"],
-                        mode="markers", name=t("an_stl_anomaly"),
-                        marker=dict(color="red", size=7, symbol="x"),
-                        hovertemplate="<b>%{x}</b><br>%{y:,.0f}<br>%{text}",
-                        text=anom["event_label"],
+                        x=s.index, y=s.values, name=name,
+                        line_color=color,
+                        fill="tozeroy" if fill else None,
+                        opacity=0.8 if fill else 1.0,
                     )
-                    fig11.update_layout(
-                        height=550, template="plotly_white",
-                        hovermode="x unified",
-                        legend_title=t("an_stl_component"),
-                    )
-                    st.plotly_chart(fig11, width="stretch")
 
-                    if not anom.empty:
-                        st.subheader(f"🚨 {len(anom)} {t('an_anom_title')}")
-                        st.caption(t("an_anom_explainer"))
-                        st.dataframe(
-                            anom[["fecha", "z_score", "event_label"]]
-                            .sort_values("z_score", key=abs, ascending=False)
-                            .head(20)
-                            .rename(columns={
-                                "fecha":       t("an_anom_date"),
-                                "z_score":     t("an_anom_z"),
-                                "event_label": t("an_anom_event"),
-                            }),
-                            width="stretch",
-                        )
-            except ImportError:
-                st.error("statsmodels not installed. Run: uv add statsmodels")
+                anom = anomalies[anomalies["is_anomaly"]]
+                fig11.add_scatter(
+                    x=anom["fecha"], y=anom["residual"],
+                    mode="markers", name=t("an_stl_anomaly"),
+                    marker=dict(color="red", size=7, symbol="x"),
+                    hovertemplate="<b>%{x}</b><br>%{y:,.0f}<br>%{text}",
+                    text=anom["event_label"],
+                )
+                fig11.update_layout(
+                    height=660, template="plotly_white",
+                    hovermode="x unified",
+                    legend_title=t("an_stl_component"),
+                )
+                st.plotly_chart(fig11, width="stretch")
+
+                if not anom.empty:
+                    st.subheader(f"🚨 {len(anom)} {t('an_anom_title')}")
+                    st.caption(t("an_anom_explainer"))
+                    st.dataframe(
+                        anom[["fecha", "z_score", "event_label"]]
+                        .sort_values("z_score", key=abs, ascending=False)
+                        .rename(columns={
+                            "fecha":       t("an_anom_date"),
+                            "z_score":     t("an_anom_z"),
+                            "event_label": t("an_anom_event"),
+                        }),
+                        width="stretch",
+                    )
+        except ImportError:
+            st.error("statsmodels not installed. Run: uv add statsmodels")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1356,130 +1150,133 @@ with tab_fc:
 
     explainer("fc_explainer")
 
-    horizon = st.slider(t("fc_horizon"), min_value=3, max_value=12, value=6, step=1)
+    horizon = st.select_slider(
+        t("fc_horizon"),
+        options=[3, 6, 9, 12, 15, 18, 21, 24],
+        value=12,
+    )
 
-    if st.button(t("fc_run"), type="primary"):
-        with st.spinner(t("fc_running")):
-            try:
-                from analytics.ml import forecast_ridership, forecast_summary
-                conn = get_conn()
-                forecasts = forecast_ridership(
-                    conn,
-                    modes=[m for m in selected_modes if m in DASHBOARD_MODES],
-                    horizon=horizon,
+    with st.spinner(t("fc_running")):
+        try:
+            from analytics.ml import forecast_ridership, forecast_summary
+            conn = get_conn()
+            forecasts = forecast_ridership(
+                conn,
+                modes=[m for m in selected_modes if m in DASHBOARD_MODES],
+                horizon=horizon,
+            )
+
+            if not forecasts:
+                st.warning(
+                    "No forecast results. Check that the pipeline has run and data is loaded."
                 )
+            else:
+                st.subheader(t("fc_title").format(n=horizon))
 
-                if not forecasts:
-                    st.warning(
-                        "No forecast results. Check that the pipeline has run and data is loaded."
+                for mode, fc in forecasts.items():
+                    hist = fc[~fc["is_forecast"]]
+                    pred = fc[fc["is_forecast"]]
+                    r, g, b = _hex_to_rgb(cmap[mode])
+
+                    fig = go.Figure()
+
+                    # Confidence band
+                    fig.add_scatter(
+                        x=pd.concat([pred["ds"], pred["ds"].iloc[::-1]]),
+                        y=pd.concat([pred["yhat_upper"], pred["yhat_lower"].iloc[::-1]]),
+                        fill="toself",
+                        fillcolor=f"rgba({int(r*255)},{int(g*255)},{int(b*255)},0.15)",
+                        line=dict(width=0),
+                        showlegend=True,
+                        name=t("fc_band"),
                     )
-                else:
-                    st.subheader(t("fc_title").format(n=horizon))
 
-                    for mode, fc in forecasts.items():
-                        hist = fc[~fc["is_forecast"]]
-                        pred = fc[fc["is_forecast"]]
-                        r, g, b = _hex_to_rgb(cmap[mode])
+                    # Raw actuals as faded dots — context without visual noise
+                    fig.add_scatter(
+                        x=hist["ds"], y=hist["actual"],
+                        mode="markers",
+                        marker=dict(color=cmap[mode], size=5, opacity=0.35),
+                        name=t("fc_actual"),
+                        showlegend=True,
+                    )
 
-                        fig = go.Figure()
+                    # Fitted values (historical) — smooth line that leads into forecast
+                    fig.add_scatter(
+                        x=hist["ds"], y=hist["yhat"],
+                        mode="lines",
+                        line=dict(color=cmap[mode], width=2),
+                        name=t("fc_fitted"),
+                        showlegend=True,
+                    )
 
-                        # Confidence band
-                        fig.add_scatter(
-                            x=pd.concat([pred["ds"], pred["ds"].iloc[::-1]]),
-                            y=pd.concat([pred["yhat_upper"], pred["yhat_lower"].iloc[::-1]]),
-                            fill="toself",
-                            fillcolor=f"rgba({int(r*255)},{int(g*255)},{int(b*255)},0.15)",
-                            line=dict(width=0),
-                            showlegend=True,
-                            name=t("fc_band"),
-                        )
+                    # Forecast line — visually continuous from fitted
+                    # Prepend the last fitted point so there's no gap
+                    last_hist = hist.iloc[[-1]]
+                    pred_with_join = pd.concat([last_hist, pred], ignore_index=True)
+                    fig.add_scatter(
+                        x=pred_with_join["ds"], y=pred_with_join["yhat"],
+                        mode="lines+markers",
+                        line=dict(color=cmap[mode], width=2, dash="dash"),
+                        marker=dict(size=6),
+                        name=t("fc_forecast"),
+                    )
 
-                        # Raw actuals as faded dots — context without visual noise
-                        fig.add_scatter(
-                            x=hist["ds"], y=hist["actual"],
-                            mode="markers",
-                            marker=dict(color=cmap[mode], size=5, opacity=0.35),
-                            name=t("fc_actual"),
-                            showlegend=True,
-                        )
+                    # Vertical marker at forecast start
+                    fig.add_vline(
+                        x=hist["ds"].max().timestamp() * 1000,
+                        line_dash="dot", line_color="grey", opacity=0.6,
+                        annotation_text=(
+                            "→ predicción" if st.session_state.lang == "es" else "→ forecast"
+                        ),
+                        annotation_font_size=10,
+                    )
 
-                        # Fitted values (historical) — smooth line that leads into forecast
-                        fig.add_scatter(
-                            x=hist["ds"], y=hist["yhat"],
-                            mode="lines",
-                            line=dict(color=cmap[mode], width=2),
-                            name=t("fc_fitted"),
-                            showlegend=True,
-                        )
+                    if show_events:
+                        fig = add_event_annotations(fig)
+                        fig = add_fare_annotations(fig)
 
-                        # Forecast line — visually continuous from fitted
-                        # Prepend the last fitted point so there's no gap
-                        last_hist = hist.iloc[[-1]]
-                        pred_with_join = pd.concat([last_hist, pred], ignore_index=True)
-                        fig.add_scatter(
-                            x=pred_with_join["ds"], y=pred_with_join["yhat"],
-                            mode="lines+markers",
-                            line=dict(color=cmap[mode], width=2, dash="dash"),
-                            marker=dict(size=6),
-                            name=t("fc_forecast"),
-                        )
+                    fig.update_layout(
+                        height=480,
+                        template="plotly_white",
+                        title=mode_label(mode),
+                        yaxis_title=t("ov_series_y"),
+                        hovermode="x unified",
+                        legend=dict(orientation="h", y=-0.25),
+                        margin=dict(t=40, b=60),
+                    )
+                    st.plotly_chart(fig, width="stretch")
 
-                        # Vertical marker at forecast start
-                        fig.add_vline(
-                            x=hist["ds"].max().timestamp() * 1000,
-                            line_dash="dot", line_color="grey", opacity=0.6,
-                            annotation_text=(
-                                "→ predicción" if st.session_state.lang == "es" else "→ forecast"
-                            ),
-                            annotation_font_size=10,
-                        )
+                # ── Summary table ──────────────────────────────────────
+                st.divider()
+                st.subheader(t("fc_summary_title"))
 
-                        if show_events:
-                            fig = add_event_annotations(fig)
-                            fig = add_fare_annotations(fig)
+                summary = forecast_summary(forecasts)
+                if not summary.empty:
+                    direction_map = {
+                        "up":   t("fc_direction_up"),
+                        "down": t("fc_direction_down"),
+                        "flat": t("fc_direction_flat"),
+                    }
+                    summary["mode"]          = summary["mode"].map(mode_label)
+                    summary["direction"]     = summary["direction"].map(direction_map)
+                    summary["last_actual"]   = summary["last_actual"].apply(lambda x: f"{x/1e6:.1f}M")
+                    summary["mean_forecast"] = summary["mean_forecast"].apply(lambda x: f"{x/1e6:.1f}M")
+                    summary["pct_change"]    = summary["pct_change"].apply(lambda x: f"{x:+.1f}%")
 
-                        fig.update_layout(
-                            height=320,
-                            template="plotly_white",
-                            title=mode_label(mode),
-                            yaxis_title=t("ov_series_y"),
-                            hovermode="x unified",
-                            legend=dict(orientation="h", y=-0.25),
-                            margin=dict(t=40, b=60),
-                        )
-                        st.plotly_chart(fig, width="stretch")
+                    st.dataframe(
+                        summary.rename(columns={
+                            "mode":          t("fc_mode"),
+                            "last_actual":   t("fc_last"),
+                            "mean_forecast": t("fc_mean"),
+                            "pct_change":    t("fc_change"),
+                            "direction":     "",
+                        }),
+                        width="stretch",
+                        hide_index=True,
+                    )
 
-                    # ── Summary table ──────────────────────────────────────
-                    st.divider()
-                    st.subheader(t("fc_summary_title"))
-
-                    summary = forecast_summary(forecasts)
-                    if not summary.empty:
-                        direction_map = {
-                            "up":   t("fc_direction_up"),
-                            "down": t("fc_direction_down"),
-                            "flat": t("fc_direction_flat"),
-                        }
-                        summary["mode"]          = summary["mode"].map(mode_label)
-                        summary["direction"]     = summary["direction"].map(direction_map)
-                        summary["last_actual"]   = summary["last_actual"].apply(lambda x: f"{x/1e6:.1f}M")
-                        summary["mean_forecast"] = summary["mean_forecast"].apply(lambda x: f"{x/1e6:.1f}M")
-                        summary["pct_change"]    = summary["pct_change"].apply(lambda x: f"{x:+.1f}%")
-
-                        st.dataframe(
-                            summary.rename(columns={
-                                "mode":          t("fc_mode"),
-                                "last_actual":   t("fc_last"),
-                                "mean_forecast": t("fc_mean"),
-                                "pct_change":    t("fc_change"),
-                                "direction":     "",
-                            }),
-                            width="stretch",
-                            hide_index=True,
-                        )
-
-            except ImportError as e:
-                st.error(f"Missing dependency: {e}. Run: uv add prophet")
+        except ImportError as e:
+            st.error(f"Missing dependency: {e}. Run: uv add prophet")
 
 
 st.divider()

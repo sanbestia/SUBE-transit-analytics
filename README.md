@@ -1,141 +1,219 @@
-# 🚇 SUBE Transit Analytics
+# SUBE Transit Analytics
 
-An end-to-end data engineering + data science project analyzing Argentina's SUBE public transit system. Built as a portfolio project showcasing ETL pipelines, DuckDB, statistical analysis, and interactive dashboards.
+Exploring public transportation usage in Argentina using an automated data pipeline and time-series analysis.
 
-**Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.**
+This project analyzes public transit usage based on official **SUBE smart-card data** published by Argentina's Ministry of Transport.
 
----
+The system automatically downloads, cleans, stores, and analyzes the data, producing statistical insights and an interactive dashboard.
 
-## Features
+The goal of the project is to demonstrate a **complete analytics pipeline**, including:
 
-- **Self-updating ETL pipeline** — downloads new daily data automatically; skips already-downloaded historical files
-- **DuckDB analytical layer** — columnar SQL, pre-built views for all dashboard queries
-- **Smart data cleaning** — handles encoding issues, column aliases across years, thousand-separator formats, outlier flagging
-- **Time series analysis** — STL decomposition (trend + seasonality + residuals), anomaly detection with z-score thresholding
-- **Interactive Streamlit dashboard** — daily ridership, modal split, YoY % change, weekday heatmap, STL decomposition viewer
-- **GitHub Actions** — automated daily refresh with database commit
-
----
-
-## Project Structure
-
-```
-sube_analytics/
-├── config.py                   # Central configuration (URLs, paths, events)
-├── run_pipeline.py             # ETL entry point (run this first!)
-│
-├── etl/
-│   ├── ingest.py               # Download CSVs from datos.transporte.gob.ar
-│   ├── clean.py                # Parse, normalize, validate, flag outliers
-│   └── load.py                 # Load into DuckDB, build views
-│
-├── analytics/
-│   └── time_series.py          # STL decomposition, anomaly detection, recovery index
-│
-├── dashboard/
-│   └── app.py                  # Streamlit dashboard
-│
-├── tests/
-│   └── test_clean.py           # Pytest unit tests for cleaning logic
-│
-├── data/
-│   ├── raw/                    # Downloaded CSVs (gitignored except .gitkeep)
-│   └── processed/              # sube.duckdb (committed by GitHub Actions)
-│
-├── logs/                       # Pipeline logs (rotated daily)
-├── requirements.txt
-└── .github/workflows/
-    └── update_data.yml         # Daily auto-update via GitHub Actions
-```
+* Automated ETL
+* Data validation and cleaning
+* Analytics warehousing
+* Time-series analysis
+* Interactive visualization
 
 ---
 
-## Quickstart
+# Architecture
 
-### 1. Clone and install
-```bash
-git clone https://github.com/YOUR_USERNAME/sube_analytics
-cd sube_analytics
-pip install -r requirements.txt
+datos.transporte.gob.ar
+↓
+ETL ingestion
+↓
+Data cleaning + normalization
+↓
+DuckDB analytics warehouse
+↓
+Statistical analysis
+↓
+Streamlit dashboard
+
+---
+
+# Repository Structure
+
+```
+etl/
+    ingest.py   # download raw datasets
+    clean.py    # schema normalization and validation
+    load.py     # load into DuckDB and build analytics tables
+
+analytics/
+    time_series.py  # statistical analysis and anomaly detection
+
+dashboard/
+    app.py      # Streamlit dashboard
+
+tests/
+    automated unit tests
+
+data/
+    raw/        # downloaded CSV files
+    processed/  # DuckDB database
+    reference/  # contextual datasets (events, fare hikes)
 ```
 
-### 2. Run the ETL pipeline
-```bash
+---
+
+# Features
+
+## Automated ETL Pipeline
+
+The pipeline downloads official SUBE datasets and processes them automatically.
+
+Run the full pipeline:
+
+```
 python run_pipeline.py
 ```
 
-This will:
-1. Download CSVs for 2020 → current year from `datos.transporte.gob.ar`
-2. Clean and normalize all data
-3. Load into `data/processed/sube.duckdb`
+Capabilities:
 
-On subsequent runs, only the current year's file is re-downloaded (historical files are skipped unless you pass `--force`).
+* incremental updates
+* automatic schema normalization
+* encoding detection
+* outlier detection
+* deduplication
+* reproducible pipeline
 
-### 3. Launch the dashboard
-```bash
+---
+
+# Analytics Warehouse
+
+Processed data is stored in **DuckDB**, a fast analytical database embedded in Python.
+
+Core tables:
+
+```
+daily_transactions
+monthly_transactions
+monthly_by_provincia
+top_empresas
+```
+
+Derived views support analytics queries:
+
+```
+v_total_daily
+v_yoy_monthly
+v_modal_split
+v_weekday_heatmap
+v_amba_vs_interior
+```
+
+---
+
+# Time-Series Analysis
+
+The project includes statistical analysis of transit usage:
+
+* rolling averages (7-day, 30-day)
+* STL decomposition
+* anomaly detection
+* post-COVID recovery index
+
+Libraries used:
+
+* statsmodels
+* pandas
+* numpy
+
+---
+
+# Interactive Dashboard
+
+Launch the dashboard:
+
+```
 streamlit run dashboard/app.py
 ```
 
-### 4. Run tests
-```bash
-pytest tests/ -v
+The dashboard visualizes:
+
+* daily ridership trends
+* modal share (bus / train / subway)
+* weekday usage patterns
+* regional comparisons
+* anomalies aligned with real-world events
+
+---
+
+# Example Insights
+
+The dataset allows exploration of several interesting patterns:
+
+* Bus ridership recovered faster after COVID lockdowns than rail.
+* Ridership shows strong weekly seasonality aligned with work patterns.
+* Major anomalies correspond to lockdowns, strikes, and fare hikes.
+
+---
+
+# Running the Project
+
+Install dependencies:
+
+```
+pip install -e .
+```
+
+Run the pipeline:
+
+```
+python run_pipeline.py
+```
+
+Launch the dashboard:
+
+```
+streamlit run dashboard/app.py
 ```
 
 ---
 
-## Self-Updating Setup
+# Testing
 
-### Option A: Cron (local machine)
-```bash
-# Add to crontab (run `crontab -e`):
-0 7 * * * cd /path/to/sube_analytics && python run_pipeline.py >> logs/cron.log 2>&1
+Run the test suite:
+
+```
+pytest
 ```
 
-### Option B: GitHub Actions (recommended)
-1. Push this repo to GitHub
-2. Enable Actions in your repo settings
-3. The workflow in `.github/workflows/update_data.yml` runs daily at 7 AM (Argentina time)
-4. Updated `sube.duckdb` is committed automatically
+Tests cover:
 
-### Option C: Streamlit Cloud
-Deploy `dashboard/app.py` to [share.streamlit.io](https://share.streamlit.io) for a public-facing dashboard. The app re-queries the DB on each session start.
+* ingestion logic
+* data cleaning
+* DuckDB loading
+* analytics functions
 
 ---
 
-## Data Source
+# Technologies
 
-| Dataset | URL | Update frequency |
-|---------|-----|-----------------|
-| SUBE transactions by day | `archivos-datos.transporte.gob.ar/upload/Dat_Ab_Usos/dat-ab-usos-{YEAR}.csv` | Daily |
-| License | Creative Commons Attribution 4.0 | — |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Data ingestion | `requests`, `hashlib` (change detection) |
-| Data cleaning | `pandas` |
-| Analytical DB | `DuckDB` |
-| Statistical analysis | `statsmodels` (STL decomposition) |
-| Dashboard | `Streamlit` + `Plotly` |
-| Logging | `loguru` |
-| Testing | `pytest` |
-| Automation | GitHub Actions |
+* Python
+* Pandas
+* DuckDB
+* Statsmodels
+* Prophet
+* Streamlit
+* Plotly
+* Pytest
 
 ---
 
-## Key Findings (to be filled after running)
+# Data Source
 
-- **COVID-19 impact**: ridership dropped ~XX% during the March 2020 ASPO lockdown
-- **Recovery timeline**: pre-pandemic levels recovered by approximately [DATE]
-- **Modal shift**: [COLECTIVO/SUBTE/TREN] share changed by X% since 2020
-- **Seasonal patterns**: highest ridership in [MONTH], lowest in [MONTH]
+Argentina Ministry of Transport open data portal:
+
+https://datos.transporte.gob.ar
+
+Dataset used:
+
+Dat_Ab_Usos — SUBE transaction usage data.
 
 ---
 
-## License
+# License
 
-Data: Creative Commons Attribution 4.0 (datos.transporte.gob.ar)  
-Code: MIT
+MIT

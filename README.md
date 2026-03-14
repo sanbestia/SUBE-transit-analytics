@@ -2,9 +2,9 @@
 
 An end-to-end data engineering and data science project analyzing Argentina's SUBE public transit card system — from raw government CSVs to an interactive bilingual dashboard with statistical analysis and ML-powered demand forecasting.
 
-**Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.**
+**[🚀 Live demo](https://sube-transit-analytics.streamlit.app/)** · Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.
 
-![Update SUBE data](https://github.com/YOUR_USERNAME/SUBE-transit-analytics/actions/workflows/update_data.yaml/badge.svg)
+![Update SUBE data](https://github.com/sanbestia/SUBE-transit-analytics/actions/workflows/update_data.yaml/badge.svg)
 
 ---
 
@@ -25,9 +25,9 @@ Six tabs, fully bilingual (Spanish / English):
 | 📊 **Overview** | Daily ridership by mode with 7-day moving average; monthly modal split; total trips by province; average ridership heatmap by weekday × month; top 10 operators by ridership |
 | 🦠 **COVID-19** | The asymmetric collapse of March 2020 — SUBTE −92%, TREN −87%, COLECTIVO −58% — annotated directly on the chart; indexed view (Jan 2020 = 100) for direct mode comparison; indexed modal recovery chart (Nov 2020 = 100) showing SUBTE rebounding faster; year-over-year % change |
 | 🔄 **Modal Substitution** | Monthly change (%) and year-over-year % per mode across the full series, with fare hike and event annotations |
-| 💪 **Resilience** | AMBA vs Interior ridership on dual axes; the Jan–Feb 2024 national fare shock window shaded and labelled; regional comparison indexed to Jan 2020 |
-| 🔬 **Analysis** | Interactive STL decomposition (trend + seasonality + residuals) with anomaly detection |
-| 🔮 **Forecast** | Prophet demand forecast 3–12 months ahead per mode, with 80% confidence intervals and a summary table |
+| 🗺️ **AMBA vs Interior** | AMBA vs Interior ridership on dual axes; the Jan–Feb 2024 national fare shock window shaded and labelled; 12-month rolling average overlay; regional comparison indexed to Jan 2020 |
+| 🔍 **Anomalies** | Automatic STL decomposition (trend + seasonality + residuals) with anomaly detection cross-referenced against a complete 2020--2026 Argentine national holiday calendar |
+| 🔮 **Forecast** | Prophet demand forecast 3–24 months ahead per mode, with 80% confidence intervals and a summary table |
 
 Key findings are surfaced as permanent callout cards at the top of the page and above each relevant tab — not hidden in collapsible expanders. All charts have annotated vertical lines for key historical events and fare hike dates, with staggered labels to prevent overlap.
 

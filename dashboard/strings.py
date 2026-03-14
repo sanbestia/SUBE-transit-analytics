@@ -7,7 +7,7 @@ Import from here instead of defining inline in app.py:
 
 STRINGS = {
     "es": {
-        "page_title":       "SUBE — Análisis de Transporte Público",
+        "page_title":       "SUBE — Análisis de Transporte Público (ALPHA - EN DESARROLLO)",
         "sidebar_title":    "SUBE Analytics",
         "sidebar_source":   "Datos: datos.transporte.gob.ar",
         "periodo":          "Período",
@@ -255,7 +255,7 @@ actual de presión tarifaria se mantiene.""",
         "amba_labels": {"SI": "AMBA", "NO": "Interior"},
     },
     "en": {
-        "page_title":       "SUBE — Public Transport Analytics",
+        "page_title":       "SUBE — Public Transport Analytics (ALPHA - IN DEVELOPMENT)",
         "sidebar_title":    "SUBE Analytics",
         "sidebar_source":   "Data: datos.transporte.gob.ar",
         "periodo":          "Period",

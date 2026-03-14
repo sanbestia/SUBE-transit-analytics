@@ -19,7 +19,7 @@ from etl.load import get_connection
 
 # ── Page config ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="SUBE Transit Analytics (ALPHA - IN DEVELOPMENT)",
+    page_title="SUBE Transit Analytics",
     page_icon="🚇",
     layout="wide",
     initial_sidebar_state="expanded",

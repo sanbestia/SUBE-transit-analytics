@@ -452,3 +452,222 @@ class TestStaggeredAnnotations:
         labels_en = {a.text for a in result_en.layout.annotations}
         # The two label sets should differ (at least some events have different labels)
         assert labels_es != labels_en
+
+
+# ── Historical data functions ──────────────────────────────────────────────
+
+class TestLoadHistoricalMonthly:
+    def test_returns_dataframe_when_table_missing(self, in_memory_db):
+        """Should return empty DataFrame gracefully if monthly_historical doesn't exist."""
+        from dashboard.utils import load_historical_monthly
+        df = load_historical_monthly(in_memory_db)
+        assert isinstance(df, pd.DataFrame)
+        assert df.empty
+
+    def test_returns_data_when_table_exists(self, in_memory_db):
+        """Should return rows when monthly_historical is populated."""
+        from dashboard.utils import load_historical_monthly
+        in_memory_db.execute("""
+            CREATE TABLE monthly_historical AS
+            SELECT
+                '2016-01-01'::DATE AS month_start,
+                2016               AS year,
+                1                  AS month,
+                'COLECTIVO'        AS modo,
+                242553686          AS total_usos,
+                'SI'               AS amba,
+                'pre2020'          AS era,
+                'mmodo_2016_2019'  AS source
+            UNION ALL
+            SELECT '2016-01-01'::DATE, 2016, 1, 'SUBTE', 16281434, 'SI', 'pre2020', 'mmodo_2016_2019'
+            UNION ALL
+            SELECT '2016-01-01'::DATE, 2016, 1, 'TREN',  19728996, 'SI', 'pre2020', 'mmodo_2016_2019'
+        """)
+        df = load_historical_monthly(in_memory_db)
+        assert len(df) == 3
+        assert set(df["modo"].unique()) == {"COLECTIVO", "SUBTE", "TREN"}
+
+    def test_has_expected_columns(self, in_memory_db):
+        from dashboard.utils import load_historical_monthly
+        df = load_historical_monthly(in_memory_db)
+        # Empty but schema-correct
+        for col in ["month_start", "modo", "total_usos"]:
+            assert col in df.columns
+
+
+class TestLoadCombinedMonthly:
+    def test_returns_dataframe(self, in_memory_db):
+        from dashboard.utils import load_combined_monthly
+        df = load_combined_monthly(in_memory_db)
+        assert isinstance(df, pd.DataFrame)
+
+    def test_falls_back_gracefully_without_historical(self, in_memory_db):
+        """When monthly_historical doesn't exist, should return post-2020 data only."""
+        from dashboard.utils import load_combined_monthly
+        df = load_combined_monthly(in_memory_db)
+        # Should still return data from monthly_transactions
+        assert not df.empty
+        assert "month_start" in df.columns
+        assert "modo" in df.columns
+        assert "total_usos" in df.columns
+
+    def test_unions_historical_and_post2020(self, in_memory_db):
+        """When monthly_historical exists, combined result should have more rows."""
+        from dashboard.utils import load_combined_monthly, load_monthly
+        post2020_count = len(load_monthly(in_memory_db))
+
+        # Add a historical row for a pre-2020 month
+        in_memory_db.execute("""
+            CREATE TABLE monthly_historical AS
+            SELECT
+                '2016-01-01'::DATE AS month_start,
+                2016 AS year, 1 AS month,
+                'COLECTIVO' AS modo,
+                200000000   AS total_usos,
+                'SI' AS amba, 'pre2020' AS era, 'test' AS source
+        """)
+        combined_count = len(load_combined_monthly(in_memory_db))
+        assert combined_count == post2020_count + 1
+
+    def test_only_dashboard_modes(self, in_memory_db):
+        from dashboard.utils import load_combined_monthly
+        df = load_combined_monthly(in_memory_db)
+        assert set(df["modo"].unique()).issubset({"COLECTIVO", "TREN", "SUBTE"})
+
+    def test_sorted_by_month_and_mode(self, in_memory_db):
+        from dashboard.utils import load_combined_monthly
+        df = load_combined_monthly(in_memory_db)
+        if len(df) > 1:
+            pairs = list(zip(df["month_start"].astype(str), df["modo"]))
+            assert pairs == sorted(pairs)
+
+
+class TestIngestHistorical:
+    """Tests for etl/ingest_historical.py parsing functions.
+    No network calls — tests use pre-baked CSV bytes."""
+
+    def test_parse_mmodo_basic(self):
+        """Source B parser handles semicolon-delimited MM/YYYY format."""
+        from etl.ingest_historical import _parse_mmodo
+        csv = (
+            "\ufeffanio;MODO;TOTAL\n"
+            "01/2016;COLECTIVO;242553686\n"
+            "01/2016;SUBTE;16281434\n"
+            "01/2016;TREN;19728996\n"
+        )
+        df = _parse_mmodo(csv.encode("utf-8"))
+        assert len(df) == 3
+        assert set(df["modo"].unique()) == {"COLECTIVO", "SUBTE", "TREN"}
+        assert df[df["modo"] == "COLECTIVO"]["total_usos"].iloc[0] == 242553686
+        assert df["month_start"].iloc[0] == pd.Timestamp("2016-01-01")
+
+    def test_parse_mmodo_premetro_mapped_to_subte(self):
+        """PREMETRO should be mapped to SUBTE."""
+        from etl.ingest_historical import _parse_mmodo
+        csv = (
+            "\ufeffanio;MODO;TOTAL\n"
+            "01/2016;PREMETRO;500000\n"
+            "01/2016;SUBTE;16000000\n"
+        )
+        df = _parse_mmodo(csv.encode("utf-8"))
+        assert "PREMETRO" not in df["modo"].values
+        assert "SUBTE" in df["modo"].values
+        # PREMETRO aggregated into SUBTE
+        subte_total = df[df["modo"] == "SUBTE"]["total_usos"].sum()
+        assert subte_total == 16500000
+
+    def test_parse_periodo_modo_yyyymm_format(self):
+        """Source A parser handles YYYYMM integer period format."""
+        from etl.ingest_historical import _parse_periodo_modo
+        csv = (
+            "periodo;modo;suma de cantidad;actualizacion\n"
+            "201301;COLECTIVO;235.035.085;201903\n"
+            "201301;SUBTE;42.133;201903\n"
+            "201301;TREN;710.787;201903\n"
+        )
+        df = _parse_periodo_modo(csv.encode("utf-8"))
+        assert len(df) == 3
+        assert df[df["modo"] == "COLECTIVO"]["total_usos"].iloc[0] == 235035085
+        assert df["month_start"].iloc[0] == pd.Timestamp("2013-01-01")
+
+    def test_parse_periodo_modo_thousands_separator(self):
+        """Dot thousands separator in cantidad must be stripped correctly."""
+        from etl.ingest_historical import _parse_periodo_modo
+        csv = (
+            "periodo;modo;suma de cantidad;actualizacion\n"
+            "201601;COLECTIVO;242.553.686;201903\n"
+        )
+        df = _parse_periodo_modo(csv.encode("utf-8"))
+        assert df["total_usos"].iloc[0] == 242553686
+
+    def test_merge_prefers_source_b(self):
+        """When both sources cover the same month, Source B wins."""
+        import pandas as pd
+        from etl.ingest_historical import MODE_MAP, VALID_MODES
+
+        df_a = pd.DataFrame({
+            "month_start": [pd.Timestamp("2016-01-01")],
+            "modo": ["COLECTIVO"],
+            "total_usos": pd.array([999], dtype="Int64"),
+            "source": ["periodo_modo_2013_2019"],
+        })
+        df_b = pd.DataFrame({
+            "month_start": [pd.Timestamp("2016-01-01")],
+            "modo": ["COLECTIVO"],
+            "total_usos": pd.array([242553686], dtype="Int64"),
+            "source": ["mmodo_2016_2019"],
+        })
+
+        # Replicate merge logic
+        b_keys = set(zip(df_b["month_start"].dt.strftime("%Y-%m"), df_b["modo"]))
+        df_a["_key"] = df_a["month_start"].dt.strftime("%Y-%m")
+        df_a_fill = df_a[
+            ~df_a.apply(lambda r: (r["_key"], r["modo"]) in b_keys, axis=1)
+        ].drop(columns=["_key"])
+
+        result = pd.concat([df_b, df_a_fill], ignore_index=True)
+        assert len(result) == 1
+        assert result["source"].iloc[0] == "mmodo_2016_2019"
+        assert result["total_usos"].iloc[0] == 242553686
+
+    def test_load_historical_writes_table(self, in_memory_db):
+        """load_historical should write monthly_historical table to DuckDB."""
+        import pandas as pd
+        from etl.ingest_historical import load_historical
+
+        df = pd.DataFrame({
+            "month_start": pd.to_datetime(["2016-01-01", "2016-02-01"]),
+            "modo": ["COLECTIVO", "COLECTIVO"],
+            "total_usos": pd.array([242553686, 245218982], dtype="Int64"),
+            "source": ["mmodo_2016_2019", "mmodo_2016_2019"],
+        })
+        load_historical(df, in_memory_db)
+
+        result = in_memory_db.execute(
+            "SELECT COUNT(*) FROM monthly_historical"
+        ).fetchone()[0]
+        assert result == 2
+
+    def test_load_historical_mode_specific_clip(self, in_memory_db):
+        """SUBTE/TREN rows before 2016 should be dropped; COLECTIVO kept."""
+        import pandas as pd
+        from etl.ingest_historical import load_historical
+
+        df = pd.DataFrame({
+            "month_start": pd.to_datetime([
+                "2013-01-01", "2013-01-01", "2013-01-01",  # pre-2016
+                "2016-01-01", "2016-01-01", "2016-01-01",  # post-2016
+            ]),
+            "modo": ["COLECTIVO", "SUBTE", "TREN"] * 2,
+            "total_usos": pd.array([100, 200, 300, 400, 500, 600], dtype="Int64"),
+            "source": ["test"] * 6,
+        })
+        load_historical(df, in_memory_db)
+
+        counts = in_memory_db.execute("""
+            SELECT modo, COUNT(*) as n FROM monthly_historical GROUP BY modo ORDER BY modo
+        """).df().set_index("modo")["n"].to_dict()
+
+        assert counts["COLECTIVO"] == 2   # both 2013 and 2016
+        assert counts["SUBTE"] == 1       # only 2016
+        assert counts["TREN"] == 1        # only 2016

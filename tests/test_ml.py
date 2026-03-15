@@ -50,17 +50,17 @@ class TestBuildFarePressure:
         assert list(df.columns) == original_cols
 
     def test_pressure_zero_before_any_hike(self):
-        # 2020 is before any fare hike in fare_hikes.yaml (first hike: 2022-03-01)
-        df = _date_range_df("2020-01-01", 6)
+        # 2015 is before any fare hike in fare_hikes.yaml (first hike: 2016-04-01)
+        df = _date_range_df("2015-01-01", 6)
         result = _build_fare_pressure(df)
         assert (result["fare_pressure"] == 0).all()
 
     def test_pressure_increases_after_hike(self):
-        # Rows before and after the 2022-03-01 hike (magnitude=30)
+        # Rows before and after the 2016-04-01 hike (magnitude=92, the first hike)
         df = pd.DataFrame({"ds": [
-            pd.Timestamp("2022-02-01"),  # before
-            pd.Timestamp("2022-03-01"),  # on the hike date
-            pd.Timestamp("2022-04-01"),  # after
+            pd.Timestamp("2016-03-01"),  # before
+            pd.Timestamp("2016-04-01"),  # on the hike date
+            pd.Timestamp("2016-05-01"),  # after
         ]})
         result = _build_fare_pressure(df)
         assert result["fare_pressure"].iloc[0] == 0
@@ -115,7 +115,7 @@ class TestBuildMacroShock:
         assert unique_values <= {0, 1}
 
     def test_pre_shock_rows_are_zero(self):
-        # All dates in 2020 should be 0 (shock threshold is Dec 2023 at earliest)
+        # All dates in 2020 should be 0 (macro shock threshold is Dec 2023 Milei devaluation)
         df = _date_range_df("2020-01-01", 12)
         result = _build_macro_shock(df)
         assert (result["macro_shock"] == 0).all()
@@ -170,8 +170,8 @@ class TestAllChangepoints:
         assert len(result) == len(set(result))
 
     def test_empty_when_last_date_before_all_events(self):
-        # Set last_date to before any known events (2022-03-01 is the first fare hike)
-        last_date = pd.Timestamp("2021-01-01")
+        # Set last_date to before any known events (2016-04-01 is the first fare hike)
+        last_date = pd.Timestamp("2015-01-01")
         result = _all_changepoints(last_date)
         assert result == []
 

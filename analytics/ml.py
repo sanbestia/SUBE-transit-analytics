@@ -23,7 +23,11 @@ FORECAST_MONTHS = 6
 
 # Macro shock events that get their own binary regressor.
 # These are discrete structural breaks that fare_pressure doesn't capture.
-_MACRO_SHOCK_COLORS = {"gray", "purple"}
+# Only purple events trigger the macro_shock regressor — these mark the Milei
+# regime change (Dec 2023 devaluation + subsidy cuts). Gray events are macro
+# annotations on charts but do not constitute a structural regime break for
+# the purpose of Prophet forecasting.
+_MACRO_SHOCK_COLORS = {"purple"}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

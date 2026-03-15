@@ -109,9 +109,9 @@ class TestEvents:
                 pytest.fail(f"Invalid date format in event: {event['date']}")
 
     def test_event_dates_span_a_reasonable_range(self):
-        # Sanity check: events should cover 2020 onwards (SUBE data window)
+        # Sanity check: events now cover from 2014 onwards (extended with pre-2020 macro events)
         dates = [datetime.date.fromisoformat(e["date"]) for e in EVENTS]
-        assert min(dates) >= datetime.date(2020, 1, 1)
+        assert min(dates) >= datetime.date(2013, 1, 1)
         assert max(dates) <= datetime.date.today() + datetime.timedelta(days=365)
 
     def test_event_labels_are_non_empty_strings(self):

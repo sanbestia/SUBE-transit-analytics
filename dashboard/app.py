@@ -36,6 +36,7 @@ from dashboard.utils import (
     load_amba_recovery as _load_amba_recovery,
     load_top_empresas as _load_top_empresas,
     load_by_provincia as _load_by_provincia,
+    load_combined_monthly as _load_combined_monthly,
     add_event_annotations as _add_event_annotations,
     add_fare_annotations as _add_fare_annotations,
     mode_color_map, hex_to_rgb, compute_mom_pct, index_to_baseline,
@@ -70,6 +71,11 @@ def get_conn():
 @st.cache_data(ttl=3600)
 def load_monthly() -> pd.DataFrame:
     return _load_monthly(get_conn())
+
+
+@st.cache_data(ttl=3600)
+def load_combined_monthly() -> pd.DataFrame:
+    return _load_combined_monthly(get_conn())
 
 
 @st.cache_data(ttl=3600)
@@ -109,17 +115,18 @@ def load_by_provincia() -> pd.DataFrame:
 
 # ── Chart helpers ──────────────────────────────────────────────────────────
 
-def add_event_annotations(fig: go.Figure, y_ref: float = 0) -> go.Figure:
+def add_event_annotations(fig: go.Figure, y_ref: float = 0, x_min=None, x_max=None) -> go.Figure:
     """Annotate fig with historical events (language from session state)."""
-    return _add_event_annotations(fig, lang=st.session_state.lang)
+    return _add_event_annotations(fig, lang=st.session_state.lang, x_min=x_min, x_max=x_max)
 
 
 def add_fare_annotations(
-    fig: go.Figure, y_ref: float = 0, scope_filter: list | None = None
+    fig: go.Figure, y_ref: float = 0, scope_filter: list | None = None,
+    x_min=None, x_max=None,
 ) -> go.Figure:
     """Annotate fig with fare hike events (language from session state)."""
     return _add_fare_annotations(fig, lang=st.session_state.lang,
-                                 scope_filter=scope_filter)
+                                 scope_filter=scope_filter, x_min=x_min, x_max=x_max)
 
 
 def mode_color_map() -> dict:
@@ -155,8 +162,11 @@ with st.sidebar:
     st.divider()
 
     daily = load_daily_totals()
-    min_date = daily["fecha"].min()
     max_date = daily["fecha"].max()
+
+    # Sidebar goes back to 2013 (full COLECTIVO history).
+    # SUBTE/TREN pre-2016 data is excluded in the chart itself.
+    min_date = pd.Timestamp("2013-01-01").date()
 
     date_range = st.date_input(
         t("periodo"),
@@ -206,6 +216,10 @@ df_monthly = monthly[
     (monthly["month_start"] <= end_date) &
     (monthly["modo"].isin(selected_modes))
 ]
+
+# Extended series: monthly_historical + monthly_transactions
+# Falls back to monthly_transactions only if historical table doesn't exist yet
+combined_monthly = load_combined_monthly()
 
 cmap = mode_color_map()
 
@@ -308,8 +322,46 @@ with tab_ov:
     explainer("ov_series_explainer")
 
     fig = go.Figure()
+
+    # Pre-2020 monthly data — plotted as a line (same style as post-2020 MA)
+    # using average daily trips (total_usos / days_in_month) to match the daily scale.
+    # COLECTIVO extends to 2013; SUBTE/TREN only from 2016 (pre-2016 SUBE coverage incomplete).
+    _pre2020 = combined_monthly[
+        (combined_monthly["month_start"] >= start_date) &
+        (combined_monthly["month_start"] < "2020-01-01") &
+        (combined_monthly["modo"].isin(selected_modes)) &
+        (
+            (combined_monthly["modo"] == "COLECTIVO") |
+            (combined_monthly["month_start"] >= "2016-01-01")
+        )
+    ].copy()
+    _has_pre2020 = False
+    if not _pre2020.empty:
+        _pre2020["days_in_month"] = _pre2020["month_start"].apply(
+            lambda d: (d + pd.offsets.MonthEnd(1)).day
+        )
+        _pre2020["avg_daily"] = (_pre2020["total_usos"] / _pre2020["days_in_month"]).round(0)
+        _has_pre2020 = True
     for mode in selected_modes:
-        mode_df = df_daily[df_daily["modo"] == mode].sort_values("fecha")
+        _pre_mode = _pre2020[_pre2020["modo"] == mode].sort_values("month_start") if _has_pre2020 else pd.DataFrame()
+        if _pre_mode.empty:
+            continue
+        fig.add_scatter(
+            x=_pre_mode["month_start"],
+            y=_pre_mode["avg_daily"],
+            mode="lines",
+            name=mode_label(mode),
+            line=dict(color=cmap[mode], width=2.5),
+            showlegend=False,
+            hovertemplate="%{x|%b %Y}<br>%{y:,.0f}<extra></extra>",
+        )
+
+    # Post-2020 daily data — raw (faint) + 7-day MA
+    for mode in selected_modes:
+        mode_df = df_daily[
+            (df_daily["modo"] == mode) &
+            ~((df_daily["fecha"].dt.month == 1) & (df_daily["fecha"].dt.day == 1))
+        ].sort_values("fecha")
         ma7 = mode_df["cantidad_usos"].rolling(7, min_periods=1).mean()
         fig.add_scatter(
             x=mode_df["fecha"], y=mode_df["cantidad_usos"],
@@ -323,43 +375,142 @@ with tab_ov:
             line=dict(color=cmap[mode], width=2.5),
         )
 
+    # Dotted gap lines — connect last pre-2020 monthly point to first daily point (Jan 2 2020)
+    # per mode, and add a "missing data" bracket over the gap region.
+    _gap_x1 = pd.Timestamp("2020-01-02")
+    _has_gap_lines = False
+    if _has_pre2020:
+        for mode in selected_modes:
+            _pre_mode = _pre2020[_pre2020["modo"] == mode].sort_values("month_start")
+            if _pre_mode.empty:
+                continue
+            # Last pre-2020 point
+            _last_pre = _pre_mode.iloc[-1]
+            _gap_y0 = float(_last_pre["avg_daily"])
+            # First daily point for this mode on Jan 2 2020
+            _daily_jan2 = df_daily[
+                (df_daily["modo"] == mode) &
+                (df_daily["fecha"] == _gap_x1)
+            ]
+            if _daily_jan2.empty:
+                # Fall back to first available daily point
+                _daily_first = df_daily[df_daily["modo"] == mode].sort_values("fecha")
+                if _daily_first.empty:
+                    continue
+                _gap_x1_mode = _daily_first.iloc[0]["fecha"]
+                _gap_y1 = float(_daily_first.iloc[0]["cantidad_usos"])
+            else:
+                _gap_x1_mode = _gap_x1
+                _gap_y1 = float(_daily_jan2.iloc[0]["cantidad_usos"])
+
+            fig.add_scatter(
+                x=[_last_pre["month_start"], _gap_x1_mode],
+                y=[_gap_y0, _gap_y1],
+                mode="lines",
+                line=dict(color=cmap[mode], width=1.5, dash="dot"),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+            _has_gap_lines = True
+
+    # Missing data bracket over the Oct 2019 → Jan 2 2020 gap
+    if _has_gap_lines:
+        _gap_x0 = pd.Timestamp("2019-10-01")
     if show_events:
         fig = add_event_annotations(fig)
+
+    # Compute y max across pre-2020 data for bracket positioning
+    if _has_pre2020:
+        _y_max_pre = float(_pre2020["avg_daily"].max())
+        # Also consider post-2020 daily max in case it's higher
+        _y_max_daily_pre_region = float(
+            df_daily[df_daily["fecha"] < "2020-06-01"]["cantidad_usos"].max()
+            if not df_daily.empty else _y_max_pre
+        )
+        _y_max = max(_y_max_pre, _y_max_daily_pre_region) if not pd.isna(_y_max_daily_pre_region) else _y_max_pre
+        _y_bracket_main  = _y_max * 1.04   # main bracket: just above data
+        _y_bracket_tick  = _y_max * 1.02
+        _y_bracket_label = _y_max * 1.06
+        _y_bracket_gap      = _y_max * 0.97
+        _y_bracket_gap_tick = _y_max * 0.955
+
+        # ── Main bracket: pre-2020 region ─────────────────────────────────
+        _bracket_x0 = _pre2020["month_start"].min()
+        _bracket_x1 = pd.Timestamp("2020-01-01")
+        _bracket_label = (
+            "Sin datos diarios — promedio por día calculado"
+            if st.session_state.lang == "es"
+            else "No daily data available — average per day shown"
+        )
+        fig.add_shape(type="line",
+                      x0=_bracket_x0, x1=_bracket_x1,
+                      y0=_y_bracket_main, y1=_y_bracket_main,
+                      xref="x", yref="y",
+                      line=dict(color="#888888", width=1.5))
+        fig.add_shape(type="line",
+                      x0=_bracket_x0, x1=_bracket_x0,
+                      y0=_y_bracket_tick, y1=_y_bracket_main,
+                      xref="x", yref="y",
+                      line=dict(color="#888888", width=1.5))
+        fig.add_shape(type="line",
+                      x0=_bracket_x1, x1=_bracket_x1,
+                      y0=_y_bracket_tick, y1=_y_bracket_main,
+                      xref="x", yref="y",
+                      line=dict(color="#888888", width=1.5))
+        fig.add_annotation(
+            x=_bracket_x0 + (_bracket_x1 - _bracket_x0) / 2,
+            y=_y_bracket_label,
+            xref="x", yref="y",
+            text=_bracket_label,
+            showarrow=False,
+            font=dict(size=10, color="#888888"),
+            xanchor="center", yanchor="bottom",
+        )
+
+    # ── Gap bracket: Oct 2019 → Jan 2 2020 ────────────────────────────────
+    if _has_gap_lines:
+        _gap_x0 = pd.Timestamp("2019-10-01")
+        _gap_label = (
+            "Sin datos disponibles"
+            if st.session_state.lang == "es"
+            else "No data available"
+        )
+        fig.add_shape(type="line",
+                      x0=_gap_x0, x1=_gap_x1,
+                      y0=_y_bracket_gap, y1=_y_bracket_gap,
+                      xref="x", yref="y",
+                      line=dict(color="#bbbbbb", width=1.2, dash="dot"))
+        fig.add_shape(type="line",
+                      x0=_gap_x0, x1=_gap_x0,
+                      y0=_y_bracket_gap_tick, y1=_y_bracket_gap,
+                      xref="x", yref="y",
+                      line=dict(color="#bbbbbb", width=1.2))
+        fig.add_shape(type="line",
+                      x0=_gap_x1, x1=_gap_x1,
+                      y0=_y_bracket_gap_tick, y1=_y_bracket_gap,
+                      xref="x", yref="y",
+                      line=dict(color="#bbbbbb", width=1.2))
+        fig.add_annotation(
+            x=_gap_x0 + (_gap_x1 - _gap_x0) / 2,
+            y=_y_bracket_gap * 1.005,
+            xref="x", yref="y",
+            text=_gap_label,
+            showarrow=False,
+            font=dict(size=9, color="#bbbbbb"),
+            xanchor="center", yanchor="bottom",
+        )
 
     fig.update_layout(
         height=675, template="plotly_white",
         yaxis_title=t("ov_series_y"),
         legend_title=None, hovermode="x unified",
+        xaxis=dict(range=["2016-01-01", str(max_date)]),
     )
     st.plotly_chart(fig, width="stretch")
 
-    st.subheader(t("ov_split_title"))
-    explainer("ov_split_explainer")
-
-    split = load_modal_split()
-    split = split[
-        (split["month_start"] >= start_date) &
-        (split["month_start"] <= end_date) &
-        (split["modo"].isin(selected_modes))
-    ].copy()
-    split["modo_label"] = split["modo"].map(mode_label)
-
-    fig2 = px.area(
-        split, x="month_start", y="mode_share_pct",
-        color="modo_label",
-        color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
-        labels={"mode_share_pct": t("ov_split_y"), "month_start": "", "modo_label": ""},
-        template="plotly_white",
-    )
-    if show_events:
-        fig2 = add_event_annotations(fig2)
-    fig2.update_layout(height=368, yaxis_ticksuffix="%", hovermode="x unified",
-                       yaxis=dict(range=[0, 125]))
-    st.plotly_chart(fig2, width="stretch")
-
     # Province histogram (moved from Resilience tab)
-    _prov_title = ("Viajes totales por provincia (2020–presente)" if st.session_state.lang == "es"
-                   else "Total trips by province (2020–present)")
+    _prov_title = ("Viajes totales por provincia" if st.session_state.lang == "es"
+                   else "Total trips by province")
     st.subheader(_prov_title)
     with st.expander("ℹ️ " + ("¿Cómo leer este gráfico?" if st.session_state.lang == "es" else "How to read this chart?")):
         st.markdown(t("rs_prov_explainer"))
@@ -570,10 +721,8 @@ with tab_ms:
                                else "How to read this chart?")):
         st.markdown(_ms_expl)
 
-    _ms_full = monthly[
-        (monthly["month_start"] >= start_date) &
-        (monthly["month_start"] <= end_date) &
-        (monthly["modo"].isin(selected_modes))
+    _ms_full = combined_monthly[
+        combined_monthly["modo"].isin(selected_modes)
     ].copy().sort_values(["modo", "month_start"])
     _ms_full["mom_pct"]    = _ms_full.groupby("modo")["total_usos"].pct_change() * 100
     _ms_full               = _ms_full.dropna(subset=["mom_pct"])
@@ -622,11 +771,15 @@ with tab_ms:
         )
         # Add event/fare annotations to the top subplot only (shared x-axis, lines span all rows)
         if show_events:
-            _fig_ms_sub = add_event_annotations(_fig_ms_sub)
-            _fig_ms_sub = add_fare_annotations(_fig_ms_sub)
-        # Re-apply range after annotations (staggered_annotations calls update_yaxes
-        # without row/col, which resets all subplot axes to its auto-computed range)
-        _fig_ms_sub.update_layout(**_yaxis_updates)
+            _fig_ms_sub = add_event_annotations(_fig_ms_sub, x_min="2016-01-01")
+            _fig_ms_sub = add_fare_annotations(_fig_ms_sub, x_min="2016-01-01")
+        # Re-apply y-axis ranges and x-axis zoom after annotations
+        # (staggered_annotations calls update_xaxes/update_yaxes which resets them)
+        _ms_x_range = ["2016-01-01", str(combined_monthly["month_start"].max())]
+        _fig_ms_sub.update_layout(
+            xaxis=dict(range=_ms_x_range),
+            **_yaxis_updates,
+        )
         st.plotly_chart(_fig_ms_sub, width="stretch")
 
     st.divider()
@@ -635,12 +788,13 @@ with tab_ms:
     st.subheader(t("ms_share_title"))
     explainer("ms_share_explainer")
 
-    share_df = load_modal_split()
-    share_df = share_df[
-        (share_df["month_start"] >= start_date) &
-        (share_df["month_start"] <= end_date) &
-        (share_df["modo"].isin(selected_modes))
+    share_df = combined_monthly[
+        (combined_monthly["month_start"] >= "2016-01-01") &
+        combined_monthly["modo"].isin(selected_modes)
     ].copy()
+    _share_totals = share_df.groupby("month_start")["total_usos"].sum().rename("month_total")
+    share_df = share_df.join(_share_totals, on="month_start")
+    share_df["mode_share_pct"] = (share_df["total_usos"] / share_df["month_total"] * 100).round(2)
     share_df["modo_label"] = share_df["modo"].map(mode_label)
 
     fig_ms2 = px.area(

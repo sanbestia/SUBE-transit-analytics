@@ -119,6 +119,67 @@ def load_by_provincia(conn) -> pd.DataFrame:
     """).df()
 
 
+def load_historical_monthly(conn) -> pd.DataFrame:
+    """
+    Pre-2020 AMBA monthly ridership from monthly_historical.
+    Returns empty DataFrame if the table doesn't exist yet
+    (i.e. ingest_historical.py hasn't been run).
+    """
+    try:
+        return conn.execute("""
+            SELECT month_start, modo, total_usos, amba, era, source
+            FROM monthly_historical
+            WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
+            ORDER BY month_start, modo
+        """).df()
+    except Exception:
+        return pd.DataFrame(
+            columns=["month_start", "modo", "total_usos", "amba", "era", "source"]
+        )
+
+
+def load_combined_monthly(conn) -> pd.DataFrame:
+    """
+    Full monthly ridership series: pre-2020 historical + post-2020 pipeline.
+
+    Unions monthly_historical (2013/2016 → 2019-10, AMBA only) with
+    monthly_transactions (2020-01 → present, AMBA + Interior).
+
+    Mode coverage:
+        COLECTIVO : 2013-01 → present
+        SUBTE     : 2016-01 → present
+        TREN      : 2016-01 → present
+
+    Returns DataFrame with columns:
+        month_start, modo, total_usos
+    (era and source columns are dropped — callers don't need provenance)
+
+    Falls back to monthly_transactions only if monthly_historical doesn't exist.
+    """
+    try:
+        return conn.execute("""
+            SELECT month_start, modo, total_usos
+            FROM monthly_historical
+            WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
+
+            UNION ALL
+
+            SELECT month_start, modo, total_usos
+            FROM monthly_transactions
+            WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
+
+            ORDER BY month_start, modo
+        """).df()
+    except Exception:
+        # monthly_historical doesn't exist — fall back to post-2020 only
+        return conn.execute("""
+            SELECT month_start, modo, total_usos
+            FROM monthly_transactions
+            WHERE modo IN ('COLECTIVO', 'TREN', 'SUBTE')
+            ORDER BY month_start, modo
+        """).df()
+
+
 # ── Data transform helpers ─────────────────────────────────────────────────
 
 def compute_mom_pct(df: pd.DataFrame) -> pd.DataFrame:
@@ -298,14 +359,21 @@ def _staggered_annotations(
     return fig
 
 
-def add_event_annotations(fig: go.Figure, lang: str = "es") -> go.Figure:
+def add_event_annotations(
+    fig: go.Figure,
+    lang: str = "es",
+    x_min=None,
+    x_max=None,
+) -> go.Figure:
     """
     Annotate a Plotly figure with vertical dotted lines for key historical
     events (loaded from config.EVENTS).
 
     Args:
-        fig : Plotly figure to annotate
-        lang: 'es' or 'en' — controls label language
+        fig  : Plotly figure to annotate
+        lang : 'es' or 'en' — controls label language
+        x_min: if provided, used as the left bound for axis range and filtering
+        x_max: if provided, used as the right bound for axis range and filtering
     """
     entries = []
     for ev in EVENTS:
@@ -316,13 +384,15 @@ def add_event_annotations(fig: go.Figure, lang: str = "es") -> go.Figure:
         if note:
             hover += f"<br><i>{note}</i>"
         entries.append({"ts": ts, "label": lbl, "hover": hover, "color": ev["color"]})
-    return _staggered_annotations(fig, entries, line_dash="dot")
+    return _staggered_annotations(fig, entries, line_dash="dot", x_min=x_min, x_max=x_max)
 
 
 def add_fare_annotations(
     fig: go.Figure,
     lang: str = "es",
     scope_filter: list | None = None,
+    x_min=None,
+    x_max=None,
 ) -> go.Figure:
     """
     Annotate a Plotly figure with vertical dashed lines for fare hike events
@@ -332,6 +402,8 @@ def add_fare_annotations(
         fig          : Plotly figure to annotate
         lang         : 'es' or 'en'
         scope_filter : if given, only draw hikes whose scope is in this list
+        x_min        : if provided, used as the left bound for axis range
+        x_max        : if provided, used as the right bound for axis range
     """
     scope_colors = {
         "national":   "#7C3AED",
@@ -354,7 +426,8 @@ def add_fare_annotations(
         if note:
             hover += f"<br>{note}"
         entries.append({"ts": ts, "label": short_lbl, "hover": hover, "color": color})
-    return _staggered_annotations(fig, entries, line_dash="dash", position="bottom")
+    return _staggered_annotations(fig, entries, line_dash="dash", position="bottom",
+                                   x_min=x_min, x_max=x_max)
 
 
 def mode_color_map() -> dict:

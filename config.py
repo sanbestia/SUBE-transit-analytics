@@ -39,9 +39,10 @@ MODE_COLORS = {
 }
 
 # ── DuckDB table names ─────────────────────────────────────────────────────
-TABLE_RAW     = "raw_transactions"
-TABLE_CLEAN   = "daily_transactions"
-TABLE_MONTHLY = "monthly_transactions"
+TABLE_RAW        = "raw_transactions"
+TABLE_CLEAN      = "daily_transactions"
+TABLE_MONTHLY    = "monthly_transactions"
+TABLE_HISTORICAL = "monthly_historical"   # pre-2020 AMBA monthly data
 
 # ── Reference data (loaded from YAML) ─────────────────────────────────────
 def _load_yaml(filename: str) -> list[dict]:

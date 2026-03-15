@@ -7,7 +7,7 @@ Import from here instead of defining inline in app.py:
 
 STRINGS = {
     "es": {
-        "page_title":       "SUBE — Análisis de Transporte Público (ALPHA - EN DESARROLLO)",
+        "page_title":       "SUBE — Análisis de Transporte Público",
         "sidebar_title":    "SUBE Analytics",
         "sidebar_source":   "Datos: datos.transporte.gob.ar",
         "periodo":          "Período",
@@ -28,13 +28,16 @@ STRINGS = {
 
         # ── Overview ──────────────────────────────────────────────────────
         "ov_series_title":    "Ridership diario por modo",
-        "ov_series_explainer": "Cantidad de viajes registrados por día para cada modo de transporte. "
-                               "La línea fina muestra el valor diario real; la línea gruesa es el **promedio móvil de 7 días**, "
+        "ov_series_explainer": "Cantidad de viajes por modo de transporte. "
+                               "**Antes de 2020**: datos mensuales del sistema SUBE expresados como promedio diario (un punto por mes). "
+                               "El COLECTIVO tiene datos desde 2013; SUBTE y TREN desde 2016, cuando la integración SUBE alcanzó cobertura completa. "
+                               "**Desde 2020**: datos diarios reales — la línea fina muestra el valor diario; la línea gruesa es el **promedio móvil de 7 días**, "
                                "que suaviza las variaciones normales entre días de semana y fin de semana para revelar la tendencia subyacente. "
                                "Las líneas verticales punteadas marcan eventos históricos clave.",
         "ov_series_y":        "Viajes",
         "ov_split_title":     "Participación por modo (modal split mensual)",
         "ov_split_explainer": "El **modal split** muestra qué porcentaje del total de viajes corresponde a cada modo en cada mes. "
+                               "La serie comienza en 2016, cuando los tres modos principales tenían cobertura SUBE completa. "
                                "Un valor constante indica que los modos crecen o caen al mismo ritmo. "
                                "Cambios en la participación revelan sustitución modal — por ejemplo, cuando el SUBTE cerró en 2020, "
                                "su porcentaje cayó casi a cero y el COLECTIVO absorbió la mayor parte de los viajes restantes.",
@@ -221,8 +224,10 @@ que el modelo lo absorbió en la tendencia. STL detecta sorpresas locales, no ca
         "fc_direction_flat":  "→ Estable",
         "fc_explainer": """**¿Cómo funciona esta predicción?**
 
-Se usa **Prophet**, un modelo de series temporales desarrollado por Meta, entrenado con los datos mensuales \
-de ridership desde 2020. El modelo aprende tres cosas por separado:
+Se usa **Prophet**, un modelo de series temporales desarrollado por Meta, entrenado con datos mensuales \
+de ridership históricos. El COLECTIVO se entrena desde 2013; SUBTE y TREN desde 2016 \
+(antes de esas fechas la cobertura SUBE era incompleta y los datos no son comparables). \
+El modelo aprende tres cosas por separado:
 
 - 📈 **Tendencia**: la dirección general de largo plazo (crecimiento o caída).
 - 📅 **Estacionalidad anual**: los patrones que se repiten cada año \
@@ -230,10 +235,12 @@ de ridership desde 2020. El modelo aprende tres cosas por separado:
 - 🎌 **Feriados argentinos**: los feriados nacionales se modelan explícitamente \
 como caídas puntuales de demanda.
 
-Además se incorporan dos **regresores externos**:
+Además se incorporan tres **regresores externos**:
 
+- 🦠 **Impacto COVID**: variable binaria que marca el período de distorsión (mar 2020 – dic 2021), \
+permitiendo al modelo aprender la caída sin absorberla en la tendencia de largo plazo.
 - 💸 **Presión tarifaria acumulada**: suma de todos los aumentos tarifarios que entraron en vigencia \
-hasta cada mes (desde el congelamiento de 2022 hasta los aumentos escalonados de 2025–2026). \
+hasta cada mes (desde los tarifazos Macri de 2016–2019 hasta los aumentos escalonados de 2025–2026). \
 No es un simple interruptor on/off — refleja la magnitud acumulada del ajuste tarifario.
 - 📉 **Shock macroeconómico**: variable binaria que captura el cambio de régimen desde la \
 devaluación de diciembre 2023 (+118%) y el recorte de subsidios, independientemente de las tarifas.
@@ -255,7 +262,7 @@ actual de presión tarifaria se mantiene.""",
         "amba_labels": {"SI": "AMBA", "NO": "Interior"},
     },
     "en": {
-        "page_title":       "SUBE — Public Transport Analytics (ALPHA - IN DEVELOPMENT)",
+        "page_title":       "SUBE — Public Transport Analytics",
         "sidebar_title":    "SUBE Analytics",
         "sidebar_source":   "Data: datos.transporte.gob.ar",
         "periodo":          "Period",
@@ -276,13 +283,16 @@ actual de presión tarifaria se mantiene.""",
 
         # ── Overview ──────────────────────────────────────────────────────
         "ov_series_title":    "Daily ridership by mode",
-        "ov_series_explainer": "Number of trips recorded per day for each transport mode. "
-                               "The thin line shows the raw daily value; the thick line is the **7-day moving average**, "
+        "ov_series_explainer": "Trip counts by transport mode. "
+                               "**Before 2020**: monthly SUBE data expressed as a daily average (one point per month). "
+                               "COLECTIVO data goes back to 2013; SUBTE and TREN from 2016, when SUBE integration reached full coverage. "
+                               "**From 2020 onwards**: actual daily data — the thin line shows the raw daily value; the thick line is the **7-day moving average**, "
                                "which smooths out normal weekday/weekend variation to reveal the underlying trend. "
                                "Dotted vertical lines mark key historical events.",
         "ov_series_y":        "Trips",
         "ov_split_title":     "Modal split (monthly)",
         "ov_split_explainer": "**Modal split** shows what percentage of total trips each mode accounts for each month. "
+                               "The series starts in 2016, when all three main modes had full SUBE coverage. "
                                "A stable value means modes grow or fall at the same rate. "
                                "Shifts reveal modal substitution — for example, when the SUBTE closed in 2020, "
                                "its share dropped to near zero and COLECTIVO absorbed most of the remaining trips.",
@@ -471,7 +481,9 @@ that the model absorbed it into the trend. STL detects local surprises, not grad
         "fc_direction_flat":  "→ Stable",
         "fc_explainer": """**How does this forecast work?**
 
-This uses **Prophet**, a time series model developed by Meta, trained on monthly ridership data since 2020. \
+This uses **Prophet**, a time series model developed by Meta, trained on historical monthly ridership data. \
+COLECTIVO is trained from 2013; SUBTE and TREN from 2016 \
+(before those dates SUBE coverage was incomplete and the data is not comparable). \
 The model learns three things separately:
 
 - 📈 **Trend**: the general long-term direction (growth or decline).
@@ -480,10 +492,12 @@ The model learns three things separately:
 - 🎌 **Argentine public holidays**: national holidays are explicitly modelled \
 as point-in-time demand drops.
 
-Two **external regressors** are also included:
+Three **external regressors** are also included:
 
+- 🦠 **COVID impact**: a binary variable marking the disruption period (Mar 2020 – Dec 2021), \
+allowing the model to learn the collapse without absorbing it into the long-term trend.
 - 💸 **Cumulative fare pressure**: the sum of all fare increases in effect up to each month \
-(from the end of the 3-year freeze in 2022 through the staged hikes of 2025–2026). \
+(from the Macri-era hikes of 2016–2019 through the staged hikes of 2025–2026). \
 Not a simple on/off switch — it reflects the accumulated magnitude of fare adjustments.
 - 📉 **Macro shock**: a binary variable capturing the regime change triggered by the \
 December 2023 devaluation (+118%) and subsidy cuts, independent of fare levels.

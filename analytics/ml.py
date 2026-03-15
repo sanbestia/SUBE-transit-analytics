@@ -102,13 +102,32 @@ def _all_changepoints(last_date: pd.Timestamp) -> list[pd.Timestamp]:
 
 
 def _load_monthly_mode(conn, mode: str) -> pd.DataFrame:
-    """Return a Prophet-ready DataFrame (ds, y) for a single mode."""
-    df = conn.execute("""
-        SELECT month_start AS ds, total_usos AS y
-        FROM monthly_transactions
-        WHERE modo = ?
-        ORDER BY ds
-    """, [mode]).df()
+    """
+    Return a Prophet-ready DataFrame (ds, y) for a single mode.
+    Unions monthly_historical (pre-2020) with monthly_transactions (post-2020).
+    Falls back to monthly_transactions only if monthly_historical doesn't exist.
+    """
+    try:
+        df = conn.execute("""
+            SELECT month_start AS ds, total_usos AS y
+            FROM monthly_historical
+            WHERE modo = ?
+
+            UNION ALL
+
+            SELECT month_start AS ds, total_usos AS y
+            FROM monthly_transactions
+            WHERE modo = ?
+
+            ORDER BY ds
+        """, [mode, mode]).df()
+    except Exception:
+        df = conn.execute("""
+            SELECT month_start AS ds, total_usos AS y
+            FROM monthly_transactions
+            WHERE modo = ?
+            ORDER BY ds
+        """, [mode]).df()
     df["ds"] = pd.to_datetime(df["ds"])
     return df
 
@@ -118,7 +137,7 @@ def _build_covid_impact(df: pd.DataFrame) -> pd.DataFrame:
     Binary regressor marking the COVID disruption period (2020-03 to 2021-12).
     Lets Prophet fit the COVID collapse explicitly rather than absorbing it
     into the trend or seasonality components.
-    Only relevant for modes trained on the full history (COLECTIVO, TREN).
+    Required when training on the full history including pre-2020 data.
     """
     df = df.copy()
     df["covid_impact"] = (
@@ -131,12 +150,13 @@ def _build_covid_impact(df: pd.DataFrame) -> pd.DataFrame:
 def _make_future(model, horizon: int, use_covid_regressor: bool = False) -> pd.DataFrame:
     """
     Build the future DataFrame for Prophet, including all regressors.
+    covid_impact is always included — it will be 0 for all forecast dates
+    (COVID period ended 2021-12, so no future rows will be flagged).
     """
     future = model.make_future_dataframe(periods=horizon, freq="MS")
     future = _build_fare_pressure(future)
     future = _build_macro_shock(future)
-    if use_covid_regressor:
-        future = _build_covid_impact(future)
+    future = _build_covid_impact(future)
     return future
 
 
@@ -180,27 +200,25 @@ def forecast_ridership(
             logger.warning(f"Skipping {mode}: only {len(df)} months of data (need ≥ 24)")
             continue
 
-        # SUBTE has a structural break in 2020 that never fully recovered.
-        # Training on the full history causes the COVID collapse to bleed into
-        # the learned seasonality, making forecasts wildly wrong.
-        # Solution: train SUBTE only on post-recovery data (2022 onward).
-        #
-        # COLECTIVO and TREN: skip the ASPO shock period (Jan–Apr 2020) which
-        # skews trend and seasonality. Train from May 2020 onward.
-        # When pre-2020 historical data is integrated, this restriction should
-        # be lifted and replaced with a covid_impact regressor instead.
-        if mode == "SUBTE":
-            train_start = pd.Timestamp("2020-11-01")  # DISPO — mobility restrictions eased
+        # Training windows now that pre-2020 historical data is available:
+        # - COLECTIVO: from 2013-01 (fully SUBE-integrated, reliable full history)
+        # - SUBTE/TREN: from 2016-01 (SUBE integration mature; pre-2016 undercounts)
+        # The COVID collapse (2020-03 → 2021-12) is handled via a covid_impact
+        # binary regressor — Prophet learns the shock explicitly rather than
+        # absorbing it into the trend or seasonality.
+        if mode == "COLECTIVO":
+            train_start = pd.Timestamp("2013-01-01")
         else:
-            train_start = pd.Timestamp("2020-05-01")
+            train_start = pd.Timestamp("2016-01-01")
 
         df = df[df["ds"] >= train_start].copy()
         logger.info(f"  {mode}: training from {train_start.strftime('%b %Y')} ({len(df)} months)")
 
         df = _build_fare_pressure(df)
         df = _build_macro_shock(df)
+        df = _build_covid_impact(df)
 
-        use_covid_regressor = False  # not needed — ASPO period excluded from training
+        use_covid_regressor = True
 
         last_date = df["ds"].max()
 
@@ -223,6 +241,7 @@ def forecast_ridership(
         model.add_country_holidays(country_name="AR")
         model.add_regressor("fare_pressure", standardize=True)
         model.add_regressor("macro_shock",   standardize=False)
+        model.add_regressor("covid_impact",  standardize=False)
 
         # Suppress Stan/cmdstanpy output
         import logging

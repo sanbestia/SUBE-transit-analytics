@@ -9,69 +9,98 @@
 #   label_en : English label
 #   color    : line color (red, orange, green, purple, blue, gray)
 
-# ── COVID ──────────────────────────────────────────────────────────────────────
+# ── KIRCHNER ERA ──────────────────────────────────────────────────────────────
 
-- date: "2020-03-20"
-  label_es: "ASPO (cuarentena estricta)"
-  label_en: "ASPO (strict lockdown)"
+- date: '2014-01-23'
+  label_es: Devaluación Kicillof (+23%)
+  label_en: Kicillof devaluation (+23%)
+  color: gray
+  notes: Official rate $6.88 → $8.50 overnight. Largest devaluation since 2002. Transit
+    fares unchanged (heavily subsidized).
+# ── MACRI ERA ─────────────────────────────────────────────────────────────────
+
+- date: '2016-04-01'
+  label_es: 1er tarifazo Macri — fin subsidios kirchneristas
+  label_en: 1st Macri fare shock — subsidy cuts begin
+  color: blue
+  notes: Colectivo minimum fare nearly doubled ($3 → ~$5.75). First subsidy reduction
+    under Cambiemos.
+- date: '2018-02-01'
+  label_es: 2do tarifazo Macri (+64% en 3 tramos)
+  label_en: 2nd Macri fare shock (+64% in 3 tranches)
+  color: blue
+  notes: 'Announced Jan 2018, applied Feb/Apr/Jun. Boleto mínimo $5.75 → $10. Cumulative
+    Macri hike: +233%.'
+- date: '2018-08-01'
+  label_es: Crisis cambiaria Macri — colapso del peso
+  label_en: Macri currency crisis — peso collapse
+  color: gray
+  notes: Peso lost ~50% Aug-Sep 2018. IMF emergency deal ($57B). Central bank rate
+    hit 60%. Triggered recession depressing transit demand into 2019.
+- date: '2019-08-12'
+  label_es: Shock PASO 2019 — Macri pierde primarias
+  label_en: PASO 2019 shock — Macri loses primary
+  color: gray
+  notes: Macri lost primary by 16 points. Peso fell ~30% in one day. Merval lost 48%
+    in USD. Government announced fare freeze for transport.
+- date: '2019-09-01'
+  label_es: Congelamiento tarifario (Macri → Alberto → COVID)
+  label_en: Fare freeze begins (Macri → Alberto → COVID)
+  color: blue
+  notes: Announced Sep 2019 pre-election. Continued by Alberto Fernández. Combined
+    with COVID lockdown, fares frozen for nearly 3 years (Sep 2019 → Mar 2022).
+# ── COVID ─────────────────────────────────────────────────────────────────────
+
+- date: '2020-03-20'
+  label_es: ASPO (cuarentena estricta)
+  label_en: ASPO (strict lockdown)
   color: red
-
-- date: "2020-11-01"
-  label_es: "Inicio DISPO"
-  label_en: "DISPO begins"
+- date: '2020-11-01'
+  label_es: Inicio DISPO
+  label_en: DISPO begins
   color: orange
-
-- date: "2021-04-09"
-  label_es: "ASPO 2 (2da cuarentena)"
-  label_en: "ASPO 2 (2nd lockdown)"
+- date: '2021-04-09'
+  label_es: ASPO 2 (2da cuarentena)
+  label_en: ASPO 2 (2nd lockdown)
   color: red
+# ── POST-COVID + MACRO SHOCKS ────────────────────────────────────────────────
 
-- date: "2022-03-01"
-  label_es: "Recuperación post-COVID"
-  label_en: "Post-COVID recovery"
+- date: '2022-03-01'
+  label_es: Recuperación post-COVID
+  label_en: Post-COVID recovery
   color: green
-
-# ── MACRO SHOCKS ───────────────────────────────────────────────────────────────
-# Inflation Argentina: 36% (2020), 51% (2021), 95% (2022), 211% (2023)
-# These are the largest discrete devaluation events in the SUBE data window.
-
-- date: "2022-07-01"
-  label_es: "Renuncia Guzmán — crisis cambiaria"
-  label_en: "Guzmán resigns — FX crisis"
-  color: gray
-  notes: "Dólar blue hit record $340 by end of Jul 2022. Batakis in, then Massa in."
-
-- date: "2023-08-14"
-  label_es: "Devaluación post-PASO (+22%)"
-  label_en: "Post-PASO devaluation (+22%)"
-  color: gray
-  notes: "Massa devalued official rate 21.8% to $350 the day after the PASO result."
-
-- date: "2023-12-13"
-  label_es: "Devaluación Milei (+118%) + fin subsidios"
-  label_en: "Milei devaluation (+118%) + subsidy cuts"
-  color: purple
-  notes: "Official rate jumped from $366 to $800 in one day. Largest devaluation since 1989 hyperinflation. Triggered the Jan-Feb 2024 fare shock sequence."
-
-# ── FARE POLICY REGIME CHANGES ─────────────────────────────────────────────────
-# Single annotation per regime change — details are in fare_hikes.yaml.
-
-- date: "2022-03-01"
-  label_es: "Fin congelamiento tarifario (3 años)"
-  label_en: "End of 3-year fare freeze"
+- date: '2022-03-01'
+  label_es: Fin congelamiento tarifario (3 años)
+  label_en: End of 3-year fare freeze
   color: blue
-  notes: "Fares had been frozen since Mar 2019. Monthly CPI indexation begins."
-
-- date: "2024-01-15"
-  label_es: "Inicio shock tarifario Milei"
-  label_en: "Milei fare shock begins"
+  notes: Fares had been frozen since Mar 2019. Monthly CPI indexation begins.
+- date: '2022-07-01'
+  label_es: Renuncia Guzmán — crisis cambiaria
+  label_en: Guzmán resigns — FX crisis
+  color: gray
+  notes: Dólar blue hit record $340 by end of Jul 2022. Batakis in, then Massa in.
+- date: '2023-08-14'
+  label_es: Devaluación post-PASO (+22%)
+  label_en: Post-PASO devaluation (+22%)
+  color: gray
+  notes: Massa devalued official rate 21.8% to $350 the day after the PASO result.
+- date: '2023-12-13'
+  label_es: Devaluación Milei (+118%) + fin subsidios
+  label_en: Milei devaluation (+118%) + subsidy cuts
   color: purple
-  notes: "+45% Jan 15, +66% Feb 6. Interior Fund eliminated Feb 2024."
+  notes: Official rate jumped from $366 to $800 in one day. Largest devaluation since
+    1989 hyperinflation. Triggered the Jan-Feb 2024 fare shock sequence.
+# ── MILEI ERA ─────────────────────────────────────────────────────────────────
 
-# ── CEPO CAMBIARIO ─────────────────────────────────────────────────────────────
+- date: '2024-01-15'
+  label_es: Inicio shock tarifario Milei
+  label_en: Milei fare shock begins
+  color: purple
+  notes: +45% Jan 15, +66% Feb 6. Interior Fund eliminated Feb 2024.
+# ── 2025+ ─────────────────────────────────────────────────────────────────────
 
-- date: "2025-04-14"
-  label_es: "Salida del cepo cambiario"
-  label_en: "Capital controls lifted"
+- date: '2025-04-14'
+  label_es: Salida del cepo cambiario
+  label_en: Capital controls lifted
   color: blue
-  notes: "Milei lifts most FX controls. Peso floats within $1000-$1400 band."
+  notes: Milei lifts most FX controls. Peso floats within $1000-$1400 band.

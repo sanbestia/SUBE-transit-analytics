@@ -2,7 +2,7 @@
 
 An end-to-end data engineering and data science project analyzing Argentina's SUBE public transit card system — from raw government CSVs to an interactive bilingual dashboard with statistical analysis and ML-powered demand forecasting.
 
-**[🚀 Live demo (IN DEVELOPMENT)](https://sube-transit-analytics.streamlit.app/)** · Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.
+**[🚀 Live demo](https://sube-transit-analytics.streamlit.app/)** · Live data from [datos.transporte.gob.ar](https://datos.transporte.gob.ar) — updated daily, automatically.
 
 ![Update SUBE data](https://github.com/sanbestia/SUBE-transit-analytics/actions/workflows/update_data.yaml/badge.svg)
 
@@ -10,7 +10,7 @@ An end-to-end data engineering and data science project analyzing Argentina's SU
 
 ## What this project does
 
-Argentina's SUBE card is used for every bus, subway, and train trip in the country. The government publishes daily ridership counts per operator and mode going back to 2020 — over 5 years of data capturing COVID lockdowns, three inflation crises, a 118% devaluation, and the complete dismantling of transit subsidies.
+Argentina's SUBE card is used for every bus, subway, and train trip in the country. The government publishes daily ridership counts per operator and mode going back to 2020, and monthly aggregates going back to 2013 — covering COVID lockdowns, three inflation crises, the Macri-era subsidy cuts, a 118% devaluation, and the complete dismantling of transit subsidies.
 
 This project ingests that data, cleans it, stores it in DuckDB, and surfaces it through a Streamlit dashboard with six analytical tabs and a Prophet-based forecasting engine.
 
@@ -22,11 +22,11 @@ Six tabs, fully bilingual (Spanish / English):
 
 | Tab | What it shows |
 |-----|---------------|
-| 📊 **Overview** | Daily ridership by mode with 7-day moving average; monthly modal split; total trips by province; average ridership heatmap by weekday × month; top 10 operators by ridership |
+| 📊 **Overview** | Daily ridership by mode — pre-2020 monthly averages (COLECTIVO from 2013, SUBTE/TREN from 2016) blended with post-2020 daily data; total trips by province; average ridership heatmap by weekday × month; top 10 operators by ridership |
 | 🦠 **COVID-19** | The asymmetric collapse of March 2020 — SUBTE −92%, TREN −87%, COLECTIVO −58% — annotated directly on the chart; indexed view (Jan 2020 = 100) for direct mode comparison; indexed modal recovery chart (Nov 2020 = 100) showing SUBTE rebounding faster; year-over-year % change |
-| 🔄 **Modal Substitution** | Monthly change (%) and year-over-year % per mode across the full series, with fare hike and event annotations |
+| 🔄 **Modal Substitution** | Monthly change (%) per mode from 2016, modal share from 2016, and year-over-year % — all with fare hike and event annotations spanning 2016–present |
 | 🗺️ **AMBA vs Interior** | AMBA vs Interior ridership on dual axes; the Jan–Feb 2024 national fare shock window shaded and labelled; 12-month rolling average overlay; regional comparison indexed to Jan 2020 |
-| 🔍 **Anomalies** | Automatic STL decomposition (trend + seasonality + residuals) with anomaly detection cross-referenced against a complete 2020--2026 Argentine national holiday calendar |
+| 🔍 **Anomalies** | Automatic STL decomposition (trend + seasonality + residuals) with anomaly detection cross-referenced against a complete 2020–2026 Argentine national holiday calendar |
 | 🔮 **Forecast** | Prophet demand forecast 3–24 months ahead per mode, with 80% confidence intervals and a summary table |
 
 Key findings are surfaced as permanent callout cards at the top of the page and above each relevant tab — not hidden in collapsible expanders. All charts have annotated vertical lines for key historical events and fare hike dates, with staggered labels to prevent overlap.
@@ -56,6 +56,8 @@ SUBE-transit-analytics/
 ├── etl/
 │   ├── ingest.py                # Download yearly CSVs; hash-based change detection;
 │   │                            # always re-fetches current year (grows daily)
+│   ├── ingest_historical.py     # One-time download of pre-2020 monthly SUBE data
+│   │                            # from datos.transporte.gob.ar → monthly_historical table
 │   ├── clean.py                 # Encoding detection (UTF-8/latin-1), column alias
 │   │                            # normalisation across schema versions, outlier flagging,
 │   │                            # deduplication
@@ -64,27 +66,32 @@ SUBE-transit-analytics/
 ├── analytics/
 │   ├── time_series.py           # STL decomposition, anomaly detection, recovery index,
 │   │                            # rolling averages
-│   └── ml.py                    # Prophet forecasting with fare pressure regressor,
-│                                # macro shock regressor, explicit structural changepoints
+│   └── ml.py                    # Prophet forecasting — 3 regressors (covid_impact,
+│                                # fare_pressure, macro_shock); trains from 2013/2016
 │
 ├── dashboard/
-│   └── app.py                   # Streamlit dashboard — 6 tabs, bilingual, Plotly charts
+│   ├── app.py                   # Streamlit dashboard — 6 tabs, bilingual, Plotly charts
+│   ├── strings.py               # All bilingual UI strings (ES/EN)
+│   └── utils.py                 # Pure testable helpers — load_*, annotation helpers,
+│                                # load_combined_monthly(), compute_mom_pct()
 │
 ├── data/
 │   ├── raw/                     # Downloaded CSVs (gitignored)
 │   ├── processed/               # sube.duckdb (committed by CI)
 │   └── reference/
-│       ├── events.yaml          # Historical events for chart annotations
-│       └── fare_hikes.yaml      # Complete fare hike history — used as ML regressors
+│       ├── events.yaml          # Historical events 2014–2025 for chart annotations
+│       ├── fare_hikes.yaml      # Fare hike history 2016–2026 — used as ML regressors
+│       └── holidays.yaml        # Argentine national holidays 2020–2026 (134 entries)
 │
-├── tests/                       # pytest suite — 240+ tests, no network calls
+├── tests/                       # pytest suite — 290+ tests, no network calls
 │   ├── conftest.py
 │   ├── test_config.py
 │   ├── test_clean.py
 │   ├── test_ingest.py
 │   ├── test_load.py
 │   ├── test_time_series.py
-│   └── test_ml.py
+│   ├── test_ml.py
+│   └── test_dashboard.py        # Tests for dashboard/utils.py (self-contained fixtures)
 │
 └── .github/workflows/
     └── update_data.yaml          # Daily pipeline run + DB commit
@@ -104,6 +111,7 @@ The ETL pipeline builds the following tables and views:
 | `monthly_transactions` | Pre-aggregated monthly rollup by mode |
 | `monthly_by_provincia` | Monthly rollup by mode × province × AMBA flag |
 | `top_empresas` | Cumulative ridership per operator, all-time |
+| `monthly_historical` | Pre-2020 AMBA monthly ridership (2013–2019) from historical sources |
 
 **Views**
 
@@ -121,15 +129,17 @@ The ETL pipeline builds the following tables and views:
 
 The `forecast_ridership()` function in `analytics/ml.py` fits a **Prophet** model per transit mode and forecasts up to 12 months ahead.
 
-Beyond standard Prophet (trend + yearly seasonality + Argentine public holidays), two external regressors are added:
+Training windows use the full available history: COLECTIVO from 2013-01, SUBTE and TREN from 2016-01 (when SUBE integration reached full coverage on those modes).
 
-- **`fare_pressure`** — a cumulative fare hike index: the running sum of all hike magnitudes (in %) that have taken effect up to each month. More informative than a binary on/off flag because it encodes the accumulated burden of successive hikes. Standardized before fitting.
+Beyond standard Prophet (trend + yearly seasonality + Argentine public holidays), three external regressors are added:
+
+- **`covid_impact`** — a binary variable marking the COVID disruption period (March 2020 – December 2021). Allows Prophet to learn the collapse explicitly rather than absorbing it into the long-term trend, which is essential now that training spans the full pre/during/post-COVID arc.
+
+- **`fare_pressure`** — a cumulative fare hike index: the running sum of all hike magnitudes (in %) that have taken effect up to each month, going back to the Macri-era hikes of 2016. More informative than a binary on/off flag because it encodes the accumulated burden of successive hikes. Standardized before fitting.
 
 - **`macro_shock`** — a binary variable marking the regime change from the December 2023 devaluation (+118%) and subsidy cuts onward. Captures the purchasing-power collapse independently of the fare level.
 
 Structural **changepoints** are fixed at the exact dates of every fare hike and macro event rather than discovered automatically — this substantially improves precision during high-volatility periods.
-
-Mode-specific training windows handle the fact that SUBTE's COVID collapse was so severe it cannot be safely included in the trend fit.
 
 ---
 
@@ -143,9 +153,9 @@ Mode-specific training windows handle the fact that SUBTE's COVID collapse was s
 | Analytical database | `DuckDB` | Columnar, in-process, SQL |
 | Statistical analysis | `statsmodels` | STL decomposition |
 | Forecasting | `prophet` | Meta's time series library |
-| Dashboard | `Streamlit` + `Plotly` | 6 tabs, bilingual |
+| Dashboard | `Streamlit` + `Plotly` | 6 tabs, bilingual, historical data from 2013 |
 | Logging | `loguru` | Rotating daily log files |
-| Testing | `pytest` | 240+ tests, fully mocked network |
+| Testing | `pytest` | 290+ tests, fully mocked network |
 | Dependency management | `uv` + `pyproject.toml` | |
 | Automation | GitHub Actions | Daily pipeline run |
 
@@ -170,13 +180,21 @@ python run_pipeline.py
 
 This downloads CSVs for 2020 → current year, cleans them, and loads everything into `data/processed/sube.duckdb`. On subsequent runs only the current year is re-downloaded (historical files are skipped unless you pass `--force`).
 
-### 3. Launch the dashboard
+### 3. Load historical data (one-time)
+
+```bash
+python etl/ingest_historical.py
+```
+
+This downloads pre-2020 monthly SUBE data from datos.transporte.gob.ar and writes it to `monthly_historical` in the DuckDB database. Only needs to be run once — the data is static. Results are cached in `data/raw/`; use `--force` to re-download.
+
+### 4. Launch the dashboard
 
 ```bash
 streamlit run dashboard/app.py
 ```
 
-### 4. Run the tests
+### 5. Run the tests
 
 ```bash
 pytest tests/ -v
@@ -215,6 +233,8 @@ Deploy `dashboard/app.py` to [share.streamlit.io](https://share.streamlit.io). T
 | Dataset | URL pattern | Update frequency | License |
 |---------|-------------|-----------------|---------|
 | SUBE daily transactions | `archivos-datos.transporte.gob.ar/upload/Dat_Ab_Usos/dat-ab-usos-{YEAR}.csv` | Daily | CC Attribution 4.0 |
+| SUBE monthly by mode (2016–2019) | `datos.transporte.gob.ar` — cancelaciones_mes_mmodo.csv | Static | CC Attribution 4.0 |
+| SUBE monthly by mode (2013–2019) | `datos.transporte.gob.ar` — operaciones-de-viaje-por-periodo-modo.csv | Static | CC Attribution 4.0 |
 
 ---
 

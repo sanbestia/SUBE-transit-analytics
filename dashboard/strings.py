@@ -20,7 +20,7 @@ STRINGS = {
         "kpi_avg":          "Promedio diario",
         "kpi_top_mode":     "Modo dominante",
         "kpi_trips":        "viajes",
-        "tab_overview":     "📊 Resumen",
+        "tab_overview":     "📊 Estructura de datos",
         "tab_covid":        "🦠 COVID-19",
         "tab_modal":        "🔄 Sustitución Modal",
         "tab_resilience":   "🗺️ AMBA vs Interior",
@@ -193,6 +193,49 @@ que el modelo lo absorbió en la tendencia. STL detecta sorpresas locales, no ca
                       "casi todos sus pasajeros son trabajadores de oficina en CABA que no podían salir. "
                       "El COLECTIVO cayó sólo un **58 %** — los colectivos siguieron transportando trabajadores "
                       "esenciales. Cuando las restricciones se levantaron, el SUBTE se recuperó más rápido.",
+        "tab_its":            "📉 Impacto Tarifario",
+        "rs_its_title":       "Impacto causal del shock tarifario (ITS)",
+        "rs_its_explainer":   """**¿Cómo leer este gráfico?**
+
+La línea **real** muestra el ridership observado desde enero 2024. \
+La línea **contrafactual** es la proyección del modelo asumiendo que el shock tarifario *no* hubiera ocurrido \
+— es decir, si la tendencia pre-2024 hubiera continuado sin interrupciones. \
+La brecha sombreada entre ambas líneas representa el impacto estimado del shock.
+
+**Método: Regresión segmentada (Interrupted Time Series)**. \
+Se ajusta un modelo OLS con:
+- β₂ (cambio de nivel): salto inmediato en el mes del tratamiento
+- β₃ (cambio de pendiente): deriva mensual acumulada después del tratamiento
+- Controles: estacionalidad mensual, COVID-19, tendencia de largo plazo
+
+**Errores estándar**: OLS para Colectivo (sin autocorrelación); \
+Newey-West HAC-12 para Subte y Tren (autocorrelación residual detectada).
+
+**Limitación importante**: β₂ y β₃ no pueden separar el efecto del precio del boleto \
+del colapso del ingreso real producto de la devaluación de diciembre 2023 (+118%). \
+La elasticidad implícita es una cota superior de la elasticidad precio pura.""",
+        "rs_its_finding":     "**El shock tarifario de 2024 produjo erosión gradual, no una caída abrupta.** "
+                              "Ningún modo muestra un cambio de nivel estadísticamente significativo en enero 2024 — "
+                              "el ridership resistió el impacto inicial. Sin embargo, **Colectivo** acumula una "
+                              "caída de tendencia de −1,6 M viajes/mes (p=0,018) y **Subte** de −0,29 M viajes/mes "
+                              "(p<0,001) desde el tratamiento. **Tren** no muestra efecto significativo en ninguna "
+                              "dimensión, consistente con una demanda más cautiva y sin alternativas claras.",
+        "rs_its_actual":          "Ridership real",
+        "rs_its_cf":              "Tendencia esperada (sin shock)",
+        "rs_its_gap":             "Diferencia",
+        "rs_its_treatment":       "Inicio del shock (Ene 2024)",
+        "rs_its_metric_lost":     "Viajes por debajo de lo esperado",
+        "rs_its_metric_lost_sub": "acumulado desde ene 2024",
+        "rs_its_metric_now":      "Diferencia en el último mes",
+        "rs_its_metric_now_sub":  "vs la tendencia sin shock",
+        "rs_its_metric_drift":    "Tendencia post-shock",
+        "rs_its_drift_falling":   "cayendo {n}M viajes/mes adicionales",
+        "rs_its_drift_rising":    "creciendo {n}M viajes/mes adicionales",
+        "rs_its_drift_flat":      "sin cambio significativo de tendencia",
+        "rs_its_note":            "⚠️ La diferencia entre la línea real y la esperada combina el efecto de la suba tarifaria "
+                                  "con el impacto de la devaluación de diciembre 2023 (+118%). "
+                                  "No es posible separar ambos efectos con estos datos.",
+
         "rs_finding": "**El shock tarifario de 2024 fue nacional, pero el AMBA lo recibió de forma más concentrada.** "
                       "Los aumentos de enero (+45 %) y febrero (+66 %) se aplicaron a líneas de jurisdicción nacional. "
                       "El Interior también fue afectado, pero absorbió el corte del Fondo de Compensación de manera gradual y heterogénea "
@@ -222,7 +265,15 @@ que el modelo lo absorbió en la tendencia. STL detecta sorpresas locales, no ca
         "fc_direction_up":    "↑ Suba",
         "fc_direction_down":  "↓ Baja",
         "fc_direction_flat":  "→ Estable",
-        "fc_explainer": """**¿Cómo funciona esta predicción?**
+        "fc_explainer": """**¿Cómo leer este gráfico?**
+
+Los valores proyectados responden a una pregunta concreta: \
+*¿hacia dónde va el uso del sistema si las tarifas, las condiciones macroeconómicas \
+y las políticas de servicio actuales se mantienen sin cambios?* \
+No es una garantía de lo que ocurrirá — es un escenario de referencia que cuantifica \
+la inercia del sistema bajo el statu quo.
+
+**¿Cómo funciona el modelo?**
 
 Se usa **Prophet**, un modelo de series temporales desarrollado por Meta, entrenado con datos mensuales \
 de ridership históricos. El COLECTIVO se entrena desde 2013; SUBTE y TREN desde 2016 \
@@ -235,7 +286,7 @@ El modelo aprende tres cosas por separado:
 - 🎌 **Feriados argentinos**: los feriados nacionales se modelan explícitamente \
 como caídas puntuales de demanda.
 
-Además se incorporan tres **regresores externos**:
+Además se incorporan cuatro **regresores externos**:
 
 - 🦠 **Impacto COVID**: variable binaria que marca el período de distorsión (mar 2020 – dic 2021), \
 permitiendo al modelo aprender la caída sin absorberla en la tendencia de largo plazo.
@@ -244,14 +295,17 @@ hasta cada mes (desde los tarifazos Macri de 2016–2019 hasta los aumentos esca
 No es un simple interruptor on/off — refleja la magnitud acumulada del ajuste tarifario.
 - 📉 **Shock macroeconómico**: variable binaria que captura el cambio de régimen desde la \
 devaluación de diciembre 2023 (+118%) y el recorte de subsidios, independientemente de las tarifas.
+- 🔄 **Momentum de recuperación**: captura la desaceleración gradual del rebote post-COVID \
+(la demanda se recuperó rápido en 2022 y luego se estabilizó en un nuevo nivel de equilibrio).
 
 Los **puntos de cambio estructural** (changepoints) se fijan en las fechas exactas de cada aumento \
 tarifario y evento macro, en lugar de dejarse descubrir automáticamente — esto mejora la precisión \
 del modelo en períodos de alta volatilidad.
 
-**¿Qué significa el intervalo de confianza?** La banda sombreada representa el rango \
-donde el modelo espera que caigan el 80% de los valores futuros. Un intervalo más ancho \
-indica mayor incertidumbre.
+**¿Qué significa la banda sombreada?** Muestra el rango donde el modelo espera que caigan \
+el 80% de los valores futuros. La banda se ensancha progresivamente con el horizonte: \
+predecir el próximo mes es mucho más certero que predecir dentro de dos años, \
+y el gráfico lo refleja.
 
 ⚠️ **Limitación importante**: el modelo no puede anticipar eventos futuros desconocidos \
 (nuevas subas de tarifas, paros, cambios de política). La predicción asume que el nivel \
@@ -275,7 +329,7 @@ actual de presión tarifaria se mantiene.""",
         "kpi_avg":          "Daily average",
         "kpi_top_mode":     "Dominant mode",
         "kpi_trips":        "trips",
-        "tab_overview":     "📊 Overview",
+        "tab_overview":     "📊 Data structure",
         "tab_covid":        "🦠 COVID-19",
         "tab_modal":        "🔄 Modal Substitution",
         "tab_resilience":   "🗺️ AMBA vs Interior",
@@ -450,6 +504,49 @@ that the model absorbed it into the trend. STL detects local surprises, not grad
                       "almost all its passengers are office workers in CABA who couldn't leave home. "
                       "COLECTIVO fell only **58%** — buses kept running for essential workers. "
                       "When restrictions lifted, SUBTE recovered faster.",
+        "tab_its":            "📉 Fare Impact",
+        "rs_its_title":       "Causal impact of the fare shock (ITS)",
+        "rs_its_explainer":   """**How to read this chart**
+
+The **actual** line shows observed ridership since January 2024. \
+The **counterfactual** line is the model's projection assuming the fare shock *had not* occurred \
+— i.e., if the pre-2024 trend had continued uninterrupted. \
+The shaded gap between the two lines is the estimated impact of the shock.
+
+**Method: Segmented regression (Interrupted Time Series)**. \
+OLS model with:
+- β₂ (level change): immediate step at the treatment month
+- β₃ (slope change): cumulative monthly drift after treatment
+- Controls: monthly seasonality, COVID-19, long-run trend
+
+**Standard errors**: OLS for Bus (no autocorrelation detected); \
+Newey-West HAC-12 for Subway and Train (residual autocorrelation detected).
+
+**Important limitation**: β₂ and β₃ cannot separate the fare price effect from \
+the real-income collapse caused by the December 2023 devaluation (+118%). \
+The implied elasticity is an upper bound on the pure price elasticity of demand.""",
+        "rs_its_finding":     "**The 2024 fare shock produced gradual erosion, not an abrupt drop.** "
+                              "No mode shows a statistically significant level change at January 2024 — "
+                              "ridership held on impact. However, **Bus** accumulates a trend decline of "
+                              "−1.6M trips/month (p=0.018) and **Subway** of −0.29M trips/month (p<0.001) "
+                              "from the treatment date onward. **Train** shows no significant effect in either "
+                              "dimension, consistent with a more captive demand base with fewer alternatives.",
+        "rs_its_actual":          "Actual ridership",
+        "rs_its_cf":              "Expected trend (no shock)",
+        "rs_its_gap":             "Gap",
+        "rs_its_treatment":       "Shock onset (Jan 2024)",
+        "rs_its_metric_lost":     "Trips below expectation",
+        "rs_its_metric_lost_sub": "cumulative since Jan 2024",
+        "rs_its_metric_now":      "Gap in the latest month",
+        "rs_its_metric_now_sub":  "vs the trend without the shock",
+        "rs_its_metric_drift":    "Post-shock trend",
+        "rs_its_drift_falling":   "falling {n}M trips/month extra",
+        "rs_its_drift_rising":    "growing {n}M trips/month extra",
+        "rs_its_drift_flat":      "no significant trend change",
+        "rs_its_note":            "⚠️ The gap between the actual and expected lines combines the fare hike effect "
+                                  "with the impact of the December 2023 devaluation (+118%). "
+                                  "It is not possible to separate the two with this data alone.",
+
         "rs_finding": "**The 2024 fare hike was national, but AMBA absorbed it more sharply.** "
                       "The January (+45%) and February (+66%) increases applied to nationally-operated lines. "
                       "Interior provinces were also affected, but absorbed the Compensation Fund cut more gradually and unevenly "
@@ -479,7 +576,15 @@ that the model absorbed it into the trend. STL detects local surprises, not grad
         "fc_direction_up":    "↑ Rising",
         "fc_direction_down":  "↓ Falling",
         "fc_direction_flat":  "→ Stable",
-        "fc_explainer": """**How does this forecast work?**
+        "fc_explainer": """**How to read this chart**
+
+The projected values answer a specific question: \
+*where is ridership heading if current fare levels, macroeconomic conditions, \
+and service policies remain unchanged?* \
+This is not a guarantee of what will happen — it is a baseline scenario that quantifies \
+the system's inertia under the status quo.
+
+**How the model works**
 
 This uses **Prophet**, a time series model developed by Meta, trained on historical monthly ridership data. \
 COLECTIVO is trained from 2013; SUBTE and TREN from 2016 \
@@ -492,7 +597,7 @@ The model learns three things separately:
 - 🎌 **Argentine public holidays**: national holidays are explicitly modelled \
 as point-in-time demand drops.
 
-Three **external regressors** are also included:
+Four **external regressors** are also included:
 
 - 🦠 **COVID impact**: a binary variable marking the disruption period (Mar 2020 – Dec 2021), \
 allowing the model to learn the collapse without absorbing it into the long-term trend.
@@ -501,12 +606,15 @@ allowing the model to learn the collapse without absorbing it into the long-term
 Not a simple on/off switch — it reflects the accumulated magnitude of fare adjustments.
 - 📉 **Macro shock**: a binary variable capturing the regime change triggered by the \
 December 2023 devaluation (+118%) and subsidy cuts, independent of fare levels.
+- 🔄 **Recovery momentum**: captures the decelerating post-COVID rebound \
+(demand recovered quickly in 2022 then stabilised at a new equilibrium level).
 
 **Structural changepoints** are fixed at the exact dates of each fare hike and macro event, \
 rather than being discovered automatically — this improves model accuracy during high-volatility periods.
 
-**What does the confidence interval mean?** The shaded band shows the range where \
-the model expects 80% of future values to fall. A wider band means higher uncertainty.
+**What does the shaded band mean?** It shows the range where the model expects 80% of future values \
+to fall. The band widens progressively with the forecast horizon: predicting next month is far more \
+certain than predicting two years out, and the chart reflects that.
 
 ⚠️ **Important limitation**: the model cannot anticipate unknown future events \
 (new fare increases, strikes, policy changes). The forecast assumes the current level \

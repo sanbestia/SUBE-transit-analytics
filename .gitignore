@@ -23,3 +23,6 @@ Thumbs.db
 
 # Personal
 ml_ideas.yaml
+
+# Generated diagnostic plots
+diagnostics/

@@ -12,22 +12,23 @@ An end-to-end data engineering and data science project analyzing Argentina's SU
 
 Argentina's SUBE card is used for every bus, subway, and train trip in the country. The government publishes daily ridership counts per operator and mode going back to 2020, and monthly aggregates going back to 2013 — covering COVID lockdowns, three inflation crises, the Macri-era subsidy cuts, a 118% devaluation, and the complete dismantling of transit subsidies.
 
-This project ingests that data, cleans it, stores it in DuckDB, and surfaces it through a Streamlit dashboard with six analytical tabs and a Prophet-based forecasting engine.
+This project ingests that data, cleans it, stores it in DuckDB, and surfaces it through a Streamlit dashboard with seven analytical tabs, a Prophet-based forecasting engine, and an Interrupted Time Series causal analysis of the 2024 fare shock.
 
 ---
 
 ## Dashboard
 
-Six tabs, fully bilingual (Spanish / English):
+Seven tabs, fully bilingual (Spanish / English):
 
 | Tab | What it shows |
 |-----|---------------|
-| 📊 **Overview** | Daily ridership by mode — pre-2020 monthly averages (COLECTIVO from 2013, SUBTE/TREN from 2016) blended with post-2020 daily data; total trips by province; average ridership heatmap by weekday × month; top 10 operators by ridership |
+| 📊 **Data structure** | Daily ridership by mode — pre-2020 monthly averages (COLECTIVO from 2013, SUBTE/TREN from 2016) blended with post-2020 daily data; total trips by province; average ridership heatmap by weekday × month; top 10 operators by ridership |
+| 🔍 **Anomalies** | Automatic STL decomposition (trend + seasonality + residuals) with anomaly detection cross-referenced against a complete 2020–2026 Argentine national holiday calendar |
+| 🔮 **Forecast** | Prophet demand forecast 6 months ahead per mode, with 80% confidence intervals that widen with horizon; summary table with direction indicator |
+| 📉 **Fare Impact** | Interrupted Time Series analysis of the Jan–Feb 2024 fare shock: counterfactual chart showing what ridership would have been without the hike, plus plain-language metrics (cumulative trips lost, latest-month gap, post-shock trend direction) |
 | 🦠 **COVID-19** | The asymmetric collapse of March 2020 — SUBTE −92%, TREN −87%, COLECTIVO −58% — annotated directly on the chart; indexed view (Jan 2020 = 100) for direct mode comparison; indexed modal recovery chart (Nov 2020 = 100) showing SUBTE rebounding faster; year-over-year % change |
 | 🔄 **Modal Substitution** | Monthly change (%) per mode from 2016, modal share from 2016, and year-over-year % — all with fare hike and event annotations spanning 2016–present |
 | 🗺️ **AMBA vs Interior** | AMBA vs Interior ridership on dual axes; the Jan–Feb 2024 national fare shock window shaded and labelled; 12-month rolling average overlay; regional comparison indexed to Jan 2020 |
-| 🔍 **Anomalies** | Automatic STL decomposition (trend + seasonality + residuals) with anomaly detection cross-referenced against a complete 2020–2026 Argentine national holiday calendar |
-| 🔮 **Forecast** | Prophet demand forecast 3–24 months ahead per mode, with 80% confidence intervals and a summary table |
 
 Key findings are surfaced as permanent callout cards at the top of the page and above each relevant tab — not hidden in collapsible expanders. All charts have annotated vertical lines for key historical events and fare hike dates, with staggered labels to prevent overlap.
 
@@ -39,7 +40,7 @@ Key findings are surfaced as permanent callout cards at the top of the page and 
 
 - **Recovery was also mode-specific.** When restrictions eased in 2021, SUBTE ridership grew faster month-over-month than COLECTIVO — suggesting the passengers who returned first were those with no alternative to the subway.
 
-- **The 2024 fare shock is visible in the data.** Two fare hikes in January (+45%) and February (+66%) 2024 — triggered by the Milei devaluation — caused a measurable ridership drop in AMBA that does not appear in Interior provinces at the same timing. Interior absorbed a different shock (loss of the Compensation Fund) on a different schedule.
+- **The 2024 fare shock caused a statistically significant ridership drop.** ITS regression (segmented OLS with HAC standard errors for SUBTE/TREN) finds a significant negative level shift and accelerating monthly decline in COLECTIVO and SUBTE ridership after January 2024. Implied demand elasticities are consistent with World Bank developing-country benchmarks — though the estimate is an upper bound because the fare hike coincided with the December 2023 devaluation (+118%) and real-income collapse.
 
 - **Seasonal patterns:** ridership peaks in March–April and August–September (Argentina's peak commuting months), and dips in January (summer holidays) and July (winter school break). This pattern is consistent across all years in the dataset.
 
@@ -66,11 +67,18 @@ SUBE-transit-analytics/
 ├── analytics/
 │   ├── time_series.py           # STL decomposition, anomaly detection, recovery index,
 │   │                            # rolling averages
-│   └── ml.py                    # Prophet forecasting — 3 regressors (covid_impact,
-│                                # fare_pressure, macro_shock); trains from 2013/2016
+│   ├── ml.py                    # Prophet forecasting — 4 regressors (covid_impact,
+│   │                            # fare_pressure, macro_shock, recovery_momentum);
+│   │                            # per-mode changepoint_prior_scale; floor protection
+│   ├── causal.py                # Interrupted Time Series (ITS) OLS regression —
+│   │                            # level + slope change at Jan 2024 treatment date;
+│   │                            # HAC Newey-West SE for TREN/SUBTE; counterfactual
+│   │                            # projection; implied demand elasticity
+│   └── diagnostics.py           # Prophet residual diagnostics — MAPE, Ljung-Box
+│                                # autocorrelation test; outputs diagnostic plots
 │
 ├── dashboard/
-│   ├── app.py                   # Streamlit dashboard — 6 tabs, bilingual, Plotly charts
+│   ├── app.py                   # Streamlit dashboard — 7 tabs, bilingual, Plotly charts
 │   ├── strings.py               # All bilingual UI strings (ES/EN)
 │   └── utils.py                 # Pure testable helpers — load_*, annotation helpers,
 │                                # load_combined_monthly(), compute_mom_pct()
@@ -83,14 +91,15 @@ SUBE-transit-analytics/
 │       ├── fare_hikes.yaml      # Fare hike history 2016–2026 — used as ML regressors
 │       └── holidays.yaml        # Argentine national holidays 2020–2026 (134 entries)
 │
-├── tests/                       # pytest suite — 290+ tests, no network calls
+├── tests/                       # pytest suite — 340+ tests, no network calls
 │   ├── conftest.py
 │   ├── test_config.py
 │   ├── test_clean.py
 │   ├── test_ingest.py
 │   ├── test_load.py
 │   ├── test_time_series.py
-│   ├── test_ml.py
+│   ├── test_ml.py               # ml.py helpers + forecast_ridership smoke test
+│   ├── test_causal.py           # causal.py helpers + its_analysis smoke test
 │   └── test_dashboard.py        # Tests for dashboard/utils.py (self-contained fixtures)
 │
 └── .github/workflows/
@@ -127,19 +136,50 @@ The ETL pipeline builds the following tables and views:
 
 ## Forecasting model
 
-The `forecast_ridership()` function in `analytics/ml.py` fits a **Prophet** model per transit mode and forecasts up to 12 months ahead.
+The `forecast_ridership()` function in `analytics/ml.py` fits a **Prophet** model per transit mode and forecasts 6 months ahead.
 
 Training windows use the full available history: COLECTIVO from 2013-01, SUBTE and TREN from 2016-01 (when SUBE integration reached full coverage on those modes).
 
-Beyond standard Prophet (trend + yearly seasonality + Argentine public holidays), three external regressors are added:
+Beyond standard Prophet (trend + yearly seasonality + Argentine public holidays), four external regressors are added:
 
-- **`covid_impact`** — a binary variable marking the COVID disruption period (March 2020 – December 2021). Allows Prophet to learn the collapse explicitly rather than absorbing it into the long-term trend, which is essential now that training spans the full pre/during/post-COVID arc.
+- **`covid_impact`** — binary variable marking the COVID disruption period (March 2020 – December 2021). Allows Prophet to learn the collapse explicitly rather than absorbing it into the long-term trend.
 
-- **`fare_pressure`** — a cumulative fare hike index: the running sum of all hike magnitudes (in %) that have taken effect up to each month, going back to the Macri-era hikes of 2016. More informative than a binary on/off flag because it encodes the accumulated burden of successive hikes. Standardized before fitting.
+- **`fare_pressure`** — cumulative fare hike index: the running sum of all hike magnitudes (in %) that have taken effect up to each month, going back to the Macri-era hikes of 2016. Encodes accumulated fare burden rather than a binary on/off. Standardized before fitting.
 
-- **`macro_shock`** — a binary variable marking the regime change from the December 2023 devaluation (+118%) and subsidy cuts onward. Captures the purchasing-power collapse independently of the fare level.
+- **`macro_shock`** — binary variable marking the regime change from the December 2023 devaluation (+118%) and subsidy cuts onward. Captures the purchasing-power collapse independently of the fare level.
+
+- **`recovery_momentum`** — `log(1 + months_since_Jan_2022)` for dates from January 2022 onward; 0 before. Captures the decelerating post-COVID recovery shape: fast initial rebound slowing toward a new equilibrium. Prevents the linear trend from absorbing this concave shape into residuals.
 
 Structural **changepoints** are fixed at the exact dates of every fare hike and macro event rather than discovered automatically — this substantially improves precision during high-volatility periods.
+
+**Trend flexibility** is tuned per mode via `changepoint_prior_scale`:
+
+| Mode | CPS | Reason |
+|------|-----|--------|
+| COLECTIVO | 0.05 | Stable trend, conservative |
+| TREN | 0.10 | Pre-COVID secular decline |
+| SUBTE | 0.20 | Post-COVID structural break requiring more flexibility |
+
+Forecast outputs are clipped to a floor of 50% of the historical minimum (applied only to future rows) to prevent the linear trend from extrapolating to zero or negative values.
+
+---
+
+## Causal analysis
+
+The `its_analysis()` function in `analytics/causal.py` estimates the causal impact of the January 2024 fare shock using **Interrupted Time Series (ITS)** segmented OLS regression:
+
+```
+y_t = β₀ + β₁·t + β₂·D_t + β₃·t_post_t + Σγ_m·Month_m + δ·COVID_t + ε_t
+```
+
+- **β₂** (level shift): immediate step change in ridership at the treatment date
+- **β₃** (slope change): change in the monthly trend after the treatment
+
+Standard errors are OLS for COLECTIVO (no residual autocorrelation detected) and HAC Newey-West (maxlags=12) for TREN and SUBTE.
+
+The counterfactual — what ridership would have been without the shock — is constructed by projecting the pre-treatment trend forward (setting D=0 and t_post=0 for all rows).
+
+**Limitation:** β₂ conflates the fare price effect with the broader December 2023 devaluation and real-income collapse. The implied elasticity is an upper bound on the pure price elasticity of demand.
 
 ---
 
@@ -151,11 +191,11 @@ Structural **changepoints** are fixed at the exact dates of every fare hike and 
 | Data ingestion | `requests` | Hash-based change detection, atomic writes |
 | Data cleaning | `pandas` 2.0+ | |
 | Analytical database | `DuckDB` | Columnar, in-process, SQL |
-| Statistical analysis | `statsmodels` | STL decomposition |
+| Statistical analysis | `statsmodels` | STL decomposition, ITS OLS regression, HAC SE |
 | Forecasting | `prophet` | Meta's time series library |
-| Dashboard | `Streamlit` + `Plotly` | 6 tabs, bilingual, historical data from 2013 |
+| Dashboard | `Streamlit` + `Plotly` | 7 tabs, bilingual, historical data from 2013 |
 | Logging | `loguru` | Rotating daily log files |
-| Testing | `pytest` | 290+ tests, fully mocked network |
+| Testing | `pytest` | 340+ tests, fully mocked network |
 | Dependency management | `uv` + `pyproject.toml` | |
 | Automation | GitHub Actions | Daily pipeline run |
 
@@ -175,7 +215,7 @@ uv sync
 ### 2. Run the ETL pipeline
 
 ```bash
-python run_pipeline.py
+uv run python run_pipeline.py
 ```
 
 This downloads CSVs for 2020 → current year, cleans them, and loads everything into `data/processed/sube.duckdb`. On subsequent runs only the current year is re-downloaded (historical files are skipped unless you pass `--force`).
@@ -183,7 +223,7 @@ This downloads CSVs for 2020 → current year, cleans them, and loads everything
 ### 3. Load historical data (one-time)
 
 ```bash
-python etl/ingest_historical.py
+uv run python etl/ingest_historical.py
 ```
 
 This downloads pre-2020 monthly SUBE data from datos.transporte.gob.ar and writes it to `monthly_historical` in the DuckDB database. Only needs to be run once — the data is static. Results are cached in `data/raw/`; use `--force` to re-download.
@@ -197,7 +237,7 @@ streamlit run dashboard/app.py
 ### 5. Run the tests
 
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 ---
@@ -208,7 +248,7 @@ pytest tests/ -v
 
 ```bash
 # Add to crontab (crontab -e):
-0 7 * * * cd /path/to/SUBE-transit-analytics && python run_pipeline.py >> logs/cron.log 2>&1
+0 7 * * * cd /path/to/SUBE-transit-analytics && uv run python run_pipeline.py >> logs/cron.log 2>&1
 ```
 
 ### Option B: GitHub Actions (recommended)
@@ -240,5 +280,5 @@ Deploy `dashboard/app.py` to [share.streamlit.io](https://share.streamlit.io). T
 
 ## License
 
-Data: [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/) (datos.transporte.gob.ar)  
+Data: [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/) (datos.transporte.gob.ar)
 Code: MIT

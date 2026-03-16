@@ -51,6 +51,7 @@ from dashboard.utils import (
     load_yoy as _load_yoy,
     load_heatmap as _load_heatmap,
     load_amba_recovery as _load_amba_recovery,
+    load_amba_by_mode as _load_amba_by_mode,
     load_top_empresas as _load_top_empresas,
     load_by_provincia as _load_by_provincia,
     load_combined_monthly as _load_combined_monthly,
@@ -121,6 +122,11 @@ def load_amba_recovery() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=3600)
+def load_amba_by_mode() -> pd.DataFrame:
+    return _load_amba_by_mode(get_conn())
+
+
+@st.cache_data(ttl=3600)
 def load_top_empresas() -> pd.DataFrame:
     return _load_top_empresas(get_conn())
 
@@ -166,6 +172,10 @@ def finding(key: str) -> None:
     st.info(t(key), icon="💡")
 
 
+# ── Load data early (needed by sidebar and KPI cards) ──────────────────────
+daily = load_daily_totals()
+max_date = daily["fecha"].max()
+
 # ── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
     col_es, col_en = st.columns(2)
@@ -180,29 +190,7 @@ with st.sidebar:
 
     st.image("dashboard/assets/sube_logo.png", width=140)
     st.title(t("sidebar_title"))
-    st.caption(t("sidebar_source"))
     st.divider()
-
-    daily = load_daily_totals()
-    max_date = daily["fecha"].max()
-
-    # Sidebar goes back to 2013 (full COLECTIVO history).
-    # SUBTE/TREN pre-2016 data is excluded in the chart itself.
-    min_date = pd.Timestamp("2013-01-01").date()
-
-    date_range = st.date_input(
-        t("periodo"),
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date,
-    )
-
-    selected_modes = st.multiselect(
-        t("modos"),
-        options=DASHBOARD_MODES,
-        default=DASHBOARD_MODES,
-        format_func=mode_label,
-    )
 
     show_events = st.toggle(t("show_events"), value=True)
 
@@ -212,38 +200,27 @@ with st.sidebar:
         st.rerun()
 
     st.caption(f"{t('data_until')}: **{max_date.strftime('%d/%m/%Y')}**")
+    st.divider()
+
+    if st.session_state.lang == "es":
+        st.markdown("**Fuentes de datos**")
+        st.markdown("🗂️ [datos.transporte.gob.ar](https://datos.transporte.gob.ar)")
+        st.markdown("**Repositorio**")
+        st.markdown("💻 [GitHub — sanbestia/SUBE-transit-analytics](https://github.com/sanbestia/SUBE-transit-analytics)")
+    else:
+        st.markdown("**Data sources**")
+        st.markdown("🗂️ [datos.transporte.gob.ar](https://datos.transporte.gob.ar)")
+        st.markdown("**Repository**")
+        st.markdown("💻 [GitHub — sanbestia/SUBE-transit-analytics](https://github.com/sanbestia/SUBE-transit-analytics)")
 
 
-# ── Date / mode filtering ──────────────────────────────────────────────────
-if len(date_range) == 2:
-    start_date = pd.Timestamp(date_range[0])
-    end_date   = pd.Timestamp(date_range[1])
-else:
-    start_date = daily["fecha"].min()
-    end_date   = daily["fecha"].max()
-
-if not selected_modes:
-    st.warning("Seleccioná al menos un modo." if st.session_state.lang == "es" else "Please select at least one mode.")
-    st.stop()
-
-df_daily = daily[
-    (daily["fecha"] >= start_date) &
-    (daily["fecha"] <= end_date) &
-    (daily["modo"].isin(selected_modes))
-]
-
-monthly = load_monthly()
-df_monthly = monthly[
-    (monthly["month_start"] >= start_date) &
-    (monthly["month_start"] <= end_date) &
-    (monthly["modo"].isin(selected_modes))
-]
-
-# Extended series: monthly_historical + monthly_transactions
-# Falls back to monthly_transactions only if historical table doesn't exist yet
+# ── Data loading ───────────────────────────────────────────────────────────
+# daily already loaded above; all other data loaded here.
+# Per-chart mode/date filters are applied locally within each tab.
+df_daily        = daily
+monthly         = load_monthly()
 combined_monthly = load_combined_monthly()
-
-cmap = mode_color_map()
+cmap            = mode_color_map()
 
 
 # ── KPI cards ──────────────────────────────────────────────────────────────
@@ -343,15 +320,41 @@ with tab_ov:
     st.subheader(t("ov_series_title"))
     explainer("ov_series_explainer")
 
+    # ── Per-chart selectors ────────────────────────────────────────────────
+    _ov_col1, _ov_col2 = st.columns([3, 2])
+    with _ov_col1:
+        ov_modes = st.multiselect(
+            t("modos"),
+            options=DASHBOARD_MODES,
+            default=DASHBOARD_MODES,
+            format_func=mode_label,
+            key="ov_modes",
+        )
+    with _ov_col2:
+        _ov_min = pd.Timestamp("2016-02-01").date()
+        _ov_max = max_date
+        ov_date_range = st.date_input(
+            t("periodo"),
+            value=(_ov_min, _ov_max),
+            min_value=_ov_min,
+            max_value=_ov_max,
+            key="ov_dates",
+        )
+    if not ov_modes:
+        st.info("Seleccioná al menos un modo." if st.session_state.lang == "es" else "Select at least one mode.")
+        ov_modes = DASHBOARD_MODES
+    ov_start = pd.Timestamp(ov_date_range[0]) if len(ov_date_range) == 2 else pd.Timestamp("2016-02-01")
+    ov_end   = pd.Timestamp(ov_date_range[1]) if len(ov_date_range) == 2 else pd.Timestamp(max_date)
+
     fig = go.Figure()
 
     # Pre-2020 monthly data — plotted as a line (same style as post-2020 MA)
     # using average daily trips (total_usos / days_in_month) to match the daily scale.
     # COLECTIVO extends to 2013; SUBTE/TREN only from 2016 (pre-2016 SUBE coverage incomplete).
     _pre2020 = combined_monthly[
-        (combined_monthly["month_start"] >= start_date) &
+        (combined_monthly["month_start"] >= ov_start) &
         (combined_monthly["month_start"] < "2020-01-01") &
-        (combined_monthly["modo"].isin(selected_modes)) &
+        (combined_monthly["modo"].isin(ov_modes)) &
         (
             (combined_monthly["modo"] == "COLECTIVO") |
             (combined_monthly["month_start"] >= "2016-01-01")
@@ -364,7 +367,7 @@ with tab_ov:
         )
         _pre2020["avg_daily"] = (_pre2020["total_usos"] / _pre2020["days_in_month"]).round(0)
         _has_pre2020 = True
-    for mode in selected_modes:
+    for mode in ov_modes:
         _pre_mode = _pre2020[_pre2020["modo"] == mode].sort_values("month_start") if _has_pre2020 else pd.DataFrame()
         if _pre_mode.empty:
             continue
@@ -378,10 +381,12 @@ with tab_ov:
             hovertemplate="%{x|%b %Y}<br>%{y:,.0f}<extra></extra>",
         )
 
-    # Post-2020 daily data — raw (faint) + 7-day MA
-    for mode in selected_modes:
+    # Post-2020 daily data — raw (faint) + 7-day MA, filtered by local selectors
+    for mode in ov_modes:
         mode_df = df_daily[
             (df_daily["modo"] == mode) &
+            (df_daily["fecha"] >= ov_start) &
+            (df_daily["fecha"] <= ov_end) &
             ~((df_daily["fecha"].dt.month == 1) & (df_daily["fecha"].dt.day == 1))
         ].sort_values("fecha")
         ma7 = mode_df["cantidad_usos"].rolling(7, min_periods=1).mean()
@@ -402,7 +407,7 @@ with tab_ov:
     _gap_x1 = pd.Timestamp("2020-01-02")
     _has_gap_lines = False
     if _has_pre2020:
-        for mode in selected_modes:
+        for mode in ov_modes:
             _pre_mode = _pre2020[_pre2020["modo"] == mode].sort_values("month_start")
             if _pre_mode.empty:
                 continue
@@ -526,7 +531,7 @@ with tab_ov:
         height=675, template="plotly_white",
         yaxis_title=t("ov_series_y"),
         legend_title=None, hovermode="x unified",
-        xaxis=dict(range=["2016-01-01", str(max_date)]),
+        xaxis=dict(range=[str(ov_start.date()), str(ov_end.date())]),
     )
     st.plotly_chart(fig, width="stretch")
 
@@ -555,26 +560,71 @@ with tab_ov:
     st.subheader(t("an_heatmap_title"))
     explainer("an_heatmap_explainer")
 
-    heatmap_df = load_heatmap()
-    pivot = heatmap_df.pivot(index="day_of_week", columns="month", values="avg_usos")
-    pivot.index   = STRINGS[st.session_state.lang]["days"]
-    pivot.columns = STRINGS[st.session_state.lang]["months"]
+    # ── Heatmap local selectors ────────────────────────────────────────────
+    _hm_col1, _hm_col2, _hm_col3 = st.columns([2, 2, 2])
+    with _hm_col1:
+        hm_modes = st.multiselect(
+            t("modos"),
+            options=DASHBOARD_MODES,
+            default=DASHBOARD_MODES,
+            format_func=mode_label,
+            key="hm_modes",
+        )
+    with _hm_col2:
+        _hm_min = pd.Timestamp("2020-01-01").date()
+        hm_date_range = st.date_input(
+            t("periodo"),
+            value=(_hm_min, max_date),
+            min_value=_hm_min,
+            max_value=max_date,
+            key="hm_dates",
+        )
+    with _hm_col3:
+        hm_excl_lockdown = st.checkbox(t("ov_excl_lockdown"), value=False, key="hm_excl")
 
-    fig_heat = px.imshow(
-        pivot,
-        color_continuous_scale="Blues",
-        labels={"color": t("an_heatmap_color")},
-        template="plotly_white",
-        aspect="auto",
-    )
-    fig_heat.update_layout(height=320)
-    st.plotly_chart(fig_heat, width="stretch")
+    if not hm_modes:
+        hm_modes = DASHBOARD_MODES
+    hm_start = pd.Timestamp(hm_date_range[0]) if len(hm_date_range) == 2 else pd.Timestamp("2020-01-01")
+    hm_end   = pd.Timestamp(hm_date_range[1]) if len(hm_date_range) == 2 else pd.Timestamp(max_date)
+
+    # Compute heatmap from daily data so filters can be applied
+    _hm_daily = df_daily[
+        (df_daily["modo"].isin(hm_modes)) &
+        (df_daily["fecha"] >= hm_start) &
+        (df_daily["fecha"] <= hm_end)
+    ].copy()
+    if hm_excl_lockdown:
+        _hm_daily = _hm_daily[~(
+            (_hm_daily["fecha"] >= pd.Timestamp("2020-04-01")) &
+            (_hm_daily["fecha"] <= pd.Timestamp("2021-07-31"))
+        )]
+    if not _hm_daily.empty:
+        _hm_agg = (
+            _hm_daily.groupby(["fecha", "day_of_week", "month"])["cantidad_usos"].sum().reset_index()
+        )
+        pivot = (
+            _hm_agg.groupby(["day_of_week", "month"])["cantidad_usos"]
+            .mean()
+            .reset_index()
+            .pivot(index="day_of_week", columns="month", values="cantidad_usos")
+        )
+        pivot.index   = STRINGS[st.session_state.lang]["days"]
+        pivot.columns = [STRINGS[st.session_state.lang]["months"][c - 1] for c in pivot.columns]
+        fig_heat = px.imshow(
+            pivot,
+            color_continuous_scale="Blues",
+            labels={"color": t("an_heatmap_color")},
+            template="plotly_white",
+            aspect="auto",
+        )
+        fig_heat.update_layout(height=320)
+        st.plotly_chart(fig_heat, width="stretch")
 
     st.subheader(t("ov_empresas_title"))
     explainer("ov_empresas_explainer")
 
     empresas = load_top_empresas()
-    empresas = empresas[empresas["modo"].isin(selected_modes)].copy()
+    empresas = empresas[empresas["modo"].isin(DASHBOARD_MODES)].copy()
     empresas["modo_label"]    = empresas["modo"].map(mode_label)
     empresas["empresa_short"] = empresas["nombre_empresa"].str[:35]
 
@@ -582,7 +632,7 @@ with tab_ov:
         empresas.sort_values("total_usos"),
         x="total_usos", y="empresa_short",
         color="modo_label",
-        color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
+        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
         orientation="h",
         labels={"total_usos": t("ov_empresas_y"), "empresa_short": t("ov_empresas_x"), "modo_label": ""},
         template="plotly_white",
@@ -598,11 +648,11 @@ with tab_cv:
 
     finding("cv_finding")
 
-    # Load covid data for all charts in this tab
+    # Load covid data for all charts in this tab (all modes)
     covid_monthly = monthly[
         (monthly["month_start"] >= "2020-01-01") &
         (monthly["month_start"] <= "2022-07-01") &
-        (monthly["modo"].isin(selected_modes))
+        (monthly["modo"].isin(DASHBOARD_MODES))
     ].copy()
     covid_monthly["modo_label"] = covid_monthly["modo"].map(mode_label)
 
@@ -622,7 +672,7 @@ with tab_cv:
         fig_norm = px.line(
             _norm_df, x="month_start", y="index_val",
             color="modo_label",
-            color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
+            color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
             markers=True,
             labels={"index_val": _idx_label, "month_start": "", "modo_label": ""},
             template="plotly_white",
@@ -637,7 +687,7 @@ with tab_cv:
             "SUBTE":     ("−92%", "Subway −92%"),
         }
         _apr2020 = pd.Timestamp("2020-04-01")
-        for _mode in selected_modes:
+        for _mode in DASHBOARD_MODES:
             _apr_row = _norm_df[(_norm_df["modo"] == _mode) &
                                 (_norm_df["month_start"] == _apr2020)]
             if not _apr_row.empty:
@@ -660,16 +710,16 @@ with tab_cv:
     st.subheader(t("cv_subst_recovery_title"))
     explainer("cv_subst_recovery_explainer")
 
-    _rec_modes = [m for m in selected_modes if m in ("COLECTIVO", "SUBTE", "TREN")]
+    _rec_modes = DASHBOARD_MODES
     recovery_monthly = monthly[
-        (monthly["month_start"] >= "2020-11-01") &
+        (monthly["month_start"] >= "2020-04-01") &
         (monthly["month_start"] <= "2022-07-01") &
         (monthly["modo"].isin(_rec_modes))
     ].copy().sort_values(["modo", "month_start"])
     recovery_monthly["modo_label"] = recovery_monthly["modo"].map(mode_label)
 
-    # Index to 100 at Nov 2020 — fixed baseline so both modes start at the same point
-    _rec_base = (recovery_monthly[recovery_monthly["month_start"] == "2020-11-01"]
+    # Index to 100 at Apr 2020 — the lockdown trough (deepest point)
+    _rec_base = (recovery_monthly[recovery_monthly["month_start"] == "2020-04-01"]
                  .set_index("modo")["total_usos"])
     recovery_monthly["index_val"] = recovery_monthly.apply(
         lambda r: (r["total_usos"] / _rec_base[r["modo"]]) * 100
@@ -678,8 +728,8 @@ with tab_cv:
     recovery_monthly = recovery_monthly.dropna(subset=["index_val"])
 
     if not recovery_monthly.empty:
-        _rec_label = ("Índice (nov 2020 = 100)" if st.session_state.lang == "es"
-                      else "Index (Nov 2020 = 100)")
+        _rec_label = ("Índice (abr 2020 = 100)" if st.session_state.lang == "es"
+                      else "Index (Apr 2020 = 100)")
         fig_rec = px.line(
             recovery_monthly, x="month_start", y="index_val",
             color="modo_label",
@@ -689,7 +739,7 @@ with tab_cv:
             template="plotly_white",
         )
         fig_rec.add_hline(y=100, line_dash="dash", line_color="grey", opacity=0.4,
-                          annotation_text="Nov 2020 = 100")
+                          annotation_text="Abr 2020 = 100" if st.session_state.lang == "es" else "Apr 2020 = 100")
         fig_rec = add_event_annotations(fig_rec)
         fig_rec.update_layout(height=570, hovermode="x unified")
         st.plotly_chart(fig_rec, width="stretch")
@@ -703,14 +753,14 @@ with tab_cv:
     yoy_covid = yoy[
         (yoy["month_start"] >= "2020-01-01") &
         (yoy["month_start"] <= "2022-07-01") &
-        (yoy["modo"].isin(selected_modes))
+        (yoy["modo"].isin(DASHBOARD_MODES))
     ].dropna(subset=["yoy_pct_change"]).copy()
     yoy_covid["modo_label"] = yoy_covid["modo"].map(mode_label)
 
     fig6 = px.bar(
         yoy_covid, x="month_start", y="yoy_pct_change",
         color="modo_label", barmode="group",
-        color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
+        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
         labels={"yoy_pct_change": t("cv_yoy_y"), "month_start": "", "modo_label": ""},
         template="plotly_white",
     )
@@ -744,13 +794,13 @@ with tab_ms:
         st.markdown(_ms_expl)
 
     _ms_full = combined_monthly[
-        combined_monthly["modo"].isin(selected_modes)
+        combined_monthly["modo"].isin(DASHBOARD_MODES)
     ].copy().sort_values(["modo", "month_start"])
     _ms_full["mom_pct"]    = _ms_full.groupby("modo")["total_usos"].pct_change() * 100
     _ms_full               = _ms_full.dropna(subset=["mom_pct"])
 
     _mom_label   = "Variación mensual (%)" if st.session_state.lang == "es" else "Monthly change (%)"
-    _active_modes = [m for m in selected_modes if m in _ms_full["modo"].unique()]
+    _active_modes = [m for m in DASHBOARD_MODES if m in _ms_full["modo"].unique()]
 
     if _active_modes:
         from plotly.subplots import make_subplots
@@ -812,7 +862,7 @@ with tab_ms:
 
     share_df = combined_monthly[
         (combined_monthly["month_start"] >= "2016-01-01") &
-        combined_monthly["modo"].isin(selected_modes)
+        combined_monthly["modo"].isin(DASHBOARD_MODES)
     ].copy()
     _share_totals = share_df.groupby("month_start")["total_usos"].sum().rename("month_total")
     share_df = share_df.join(_share_totals, on="month_start")
@@ -822,7 +872,7 @@ with tab_ms:
     fig_ms2 = px.area(
         share_df, x="month_start", y="mode_share_pct",
         color="modo_label",
-        color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
+        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
         labels={"mode_share_pct": t("ov_split_y"), "month_start": "", "modo_label": ""},
         template="plotly_white",
     )
@@ -841,16 +891,14 @@ with tab_ms:
 
     yoy_all = load_yoy()
     yoy_all = yoy_all[
-        (yoy_all["month_start"] >= start_date) &
-        (yoy_all["month_start"] <= end_date) &
-        (yoy_all["modo"].isin(selected_modes))
+        yoy_all["modo"].isin(DASHBOARD_MODES)
     ].dropna(subset=["yoy_pct_change"]).copy()
     yoy_all["modo_label"] = yoy_all["modo"].map(mode_label)
 
     fig_ms3 = px.bar(
         yoy_all, x="month_start", y="yoy_pct_change",
         color="modo_label", barmode="group",
-        color_discrete_map={mode_label(m): cmap[m] for m in selected_modes},
+        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
         labels={"yoy_pct_change": t("cv_yoy_y"), "month_start": "", "modo_label": ""},
         template="plotly_white",
     )
@@ -868,14 +916,40 @@ with tab_ms:
 with tab_rs:
 
     lang        = st.session_state.lang
-    amba_df     = load_amba_recovery()
     amba_labels = STRINGS[lang]["amba_labels"]
     amba_colors = {"SI": "#2563EB", "NO": "#F59E0B"}
 
-    amba_plot           = amba_df.copy()
-    amba_plot["region"] = amba_plot["amba"].map(amba_labels)
-
     finding("rs_finding")
+
+    # ── Mode selector shared by both AMBA charts ───────────────────────────
+    rs_modes = st.multiselect(
+        t("modos"),
+        options=DASHBOARD_MODES,
+        default=DASHBOARD_MODES,
+        format_func=mode_label,
+        key="rs_modes",
+    )
+    if not rs_modes:
+        rs_modes = DASHBOARD_MODES
+
+    # Build amba_plot filtered by selected modes
+    _amba_raw = load_amba_by_mode()
+    _amba_raw["month_start"] = pd.to_datetime(_amba_raw["month_start"])
+    _amba_filt = _amba_raw[_amba_raw["modo"].isin(rs_modes)]
+    amba_agg = (
+        _amba_filt.groupby(["month_start", "amba"])["total"]
+        .sum()
+        .reset_index()
+    )
+    # Compute recovery index from the filtered (aggregated) data
+    _jan2020 = amba_agg[amba_agg["month_start"] == "2020-01-01"].set_index("amba")["total"]
+    amba_agg["recovery_index"] = amba_agg.apply(
+        lambda r: round(100.0 * r["total"] / _jan2020[r["amba"]], 1)
+        if r["amba"] in _jan2020.index and _jan2020[r["amba"]] > 0 else float("nan"),
+        axis=1,
+    )
+    amba_plot           = amba_agg.copy()
+    amba_plot["region"] = amba_plot["amba"].map(amba_labels)
 
     # Dual y-axis so AMBA and Interior use independent scales
     st.subheader(t("rs_amba_title"))
@@ -1180,7 +1254,7 @@ with tab_an:
     with col_l:
         stl_mode = st.selectbox(
             t("an_stl_mode"),
-            ["ALL"] + [m for m in DASHBOARD_MODES if m in selected_modes],
+            ["ALL"] + list(DASHBOARD_MODES),
             format_func=lambda m: t("an_stl_all") if m == "ALL" else mode_label(m),
         )
     with col_r:
@@ -1277,7 +1351,7 @@ with tab_fc:
             conn = get_conn()
             forecasts = forecast_ridership(
                 conn,
-                modes=[m for m in selected_modes if m in DASHBOARD_MODES],
+                modes=list(DASHBOARD_MODES),
                 horizon=horizon,
             )
 

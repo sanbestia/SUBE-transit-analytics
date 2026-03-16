@@ -27,7 +27,8 @@ STRINGS = {
         "tab_analysis":     "🔍 Anomalías",
 
         # ── Overview ──────────────────────────────────────────────────────
-        "ov_series_title":    "Ridership diario por modo",
+        "ov_series_title":    "Ridership diario",
+        "ov_excl_lockdown":   "Excluir lockdown (abr 2020 – jul 2021)",
         "ov_series_explainer": "Cantidad de viajes por modo de transporte. "
                                "**Antes de 2020**: datos mensuales del sistema SUBE expresados como promedio diario (un punto por mes). "
                                "El COLECTIVO tiene datos desde 2013; SUBTE y TREN desde 2016, cuando la integración SUBE alcanzó cobertura completa. "
@@ -62,11 +63,11 @@ STRINGS = {
                                  "Durante 2021, el SUBTE creció consistentemente más rápido que el COLECTIVO — "
                                  "esto sugiere que cuando las restricciones se levantaron, los usuarios volvieron al subte "
                                  "con más entusiasmo que al colectivo, posiblemente por velocidad y confiabilidad.",
-        "cv_subst_recovery_title":   "Recuperación modal: variación mensual % (2021–2022)",
-        "cv_subst_recovery_explainer": "Cuando las restricciones se levantaron, el SUBTE creció más rápido "
-                                        "que el COLECTIVO mes a mes — la señal de que sus pasajeros volvieron "
-                                        "antes y con más consistencia. Esto sugiere que quienes tomaban el subte "
-                                        "lo hacían por necesidad (sin alternativa viable), no por preferencia.",
+        "cv_subst_recovery_title":   "Recuperación modal desde el piso del lockdown (abr 2020 = 100)",
+        "cv_subst_recovery_explainer": "Índice de ridership relativo al piso del lockdown (abril 2020, el mes de mayor caída). "
+                                        "Muestra la velocidad de recuperación de cada modo desde el punto más bajo. "
+                                        "El SUBTE creció más rápido que el COLECTIVO — sus pasajeros volvieron "
+                                        "antes y con más consistencia, posiblemente por necesidad (sin alternativa viable).",
         "cv_yoy_title":         "Variación año a año (%) por modo",
         "cv_yoy_explainer":     "Compara cada mes con el mismo mes del año anterior, eliminando la estacionalidad natural "
                                  "(por ejemplo, enero siempre tiene menos viajes que marzo). "
@@ -171,7 +172,7 @@ que el modelo lo absorbió en la tendencia. STL detecta sorpresas locales, no ca
                                 "corresponden a días donde algo inusual ocurrió pero no está registrado en nuestra lista de eventos. "
                                 "Un z-score de 3 significa que el residuo está 3 desvíos estándar por encima o debajo de lo esperado.",
 
-        "kpi_explainer": "Métricas calculadas sobre el período y los modos seleccionados en el panel lateral. "
+        "kpi_explainer": "Métricas calculadas sobre el total histórico disponible (todos los modos). "
                           "El **día pico** es el día individual con más viajes registrados. "
                           "El **promedio diario** incluye fines de semana y feriados, por eso es menor que un típico día hábil.",
 
@@ -336,7 +337,8 @@ actual de presión tarifaria se mantiene.""",
         "tab_analysis":     "🔍 Anomalies",
 
         # ── Overview ──────────────────────────────────────────────────────
-        "ov_series_title":    "Daily ridership by mode",
+        "ov_series_title":    "Daily ridership",
+        "ov_excl_lockdown":   "Exclude lockdown (Apr 2020 – Jul 2021)",
         "ov_series_explainer": "Trip counts by transport mode. "
                                "**Before 2020**: monthly SUBE data expressed as a daily average (one point per month). "
                                "COLECTIVO data goes back to 2013; SUBTE and TREN from 2016, when SUBE integration reached full coverage. "
@@ -371,9 +373,10 @@ actual de presión tarifaria se mantiene.""",
                                  "Throughout 2021, SUBTE consistently grew faster than COLECTIVO — "
                                  "suggesting that once restrictions lifted, users returned to the subway more eagerly, "
                                  "possibly due to speed and reliability advantages.",
-        "cv_subst_recovery_title":   "Modal recovery: month-over-month % change (2021–2022)",
-        "cv_subst_recovery_explainer": "Once restrictions lifted, SUBTE grew faster than COLECTIVO "
-                                        "month-over-month — a signal that its passengers returned earlier "
+        "cv_subst_recovery_title":   "Modal recovery from lockdown trough (Apr 2020 = 100)",
+        "cv_subst_recovery_explainer": "Ridership index relative to the lockdown trough (April 2020, the sharpest drop). "
+                                        "Shows the speed of recovery from the lowest point for each mode. "
+                                        "SUBTE grew faster than COLECTIVO — its passengers returned earlier "
                                         "and more consistently. This suggests subway riders used it out of "
                                         "necessity (no viable alternative), not just preference.",
         "cv_yoy_title":         "Year-over-year % change by mode",
@@ -482,7 +485,7 @@ that the model absorbed it into the trend. STL detects local surprises, not grad
                                 "they correspond to days where something unusual happened that isn't in our events list. "
                                 "A z-score of 3 means the residual is 3 standard deviations above or below what was expected.",
 
-        "kpi_explainer": "Metrics calculated over the period and modes selected in the sidebar. "
+        "kpi_explainer": "Metrics calculated over the full historical dataset (all modes). "
                           "**Peak day** is the single day with the highest recorded trips. "
                           "**Daily average** includes weekends and holidays, so it is lower than a typical workday.",
 

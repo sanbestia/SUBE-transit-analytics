@@ -73,6 +73,21 @@ def load_heatmap(conn) -> pd.DataFrame:
     return conn.execute("SELECT * FROM v_weekday_heatmap").df()
 
 
+def load_amba_by_mode(conn) -> pd.DataFrame:
+    """
+    Monthly ridership by AMBA × mode, without a pre-computed recovery index.
+    Used when the dashboard needs to filter by mode before aggregating.
+    """
+    return conn.execute("""
+        SELECT month_start, amba, modo, SUM(total_usos) AS total
+        FROM monthly_by_provincia
+        WHERE amba IN ('SI', 'NO')
+          AND modo IN ('COLECTIVO', 'TREN', 'SUBTE')
+        GROUP BY month_start, amba, modo
+        ORDER BY month_start, amba, modo
+    """).df()
+
+
 def load_amba_recovery(conn) -> pd.DataFrame:
     """
     Monthly ridership totals for AMBA and Interior, with a recovery index
@@ -438,4 +453,5 @@ def mode_color_map() -> dict:
 def hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
     """Convert '#RRGGBB' to (r, g, b) floats in 0–1 range."""
     h = hex_color.lstrip("#")
-    return tuple(int(h[i:i+2], 16) / 255 for i in (0, 2, 4))
+    r, g, b = (int(h[i:i+2], 16) / 255 for i in (0, 2, 4))
+    return r, g, b

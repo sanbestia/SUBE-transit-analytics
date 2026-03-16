@@ -321,30 +321,24 @@ with tab_ov:
     explainer("ov_series_explainer")
 
     # ── Per-chart selectors ────────────────────────────────────────────────
-    _ov_col1, _ov_col2 = st.columns([3, 2])
+    _ov_min = pd.Timestamp("2016-02-01").date()
+    _ov_max = max_date
+    _ov_col1, _ov_col2, _ov_col3, _ov_col4, _ov_col5 = st.columns([1, 1, 1, 2, 2])
     with _ov_col1:
-        ov_modes = st.multiselect(
-            t("modos"),
-            options=DASHBOARD_MODES,
-            default=DASHBOARD_MODES,
-            format_func=mode_label,
-            key="ov_modes",
-        )
+        ov_col  = st.checkbox(mode_label("COLECTIVO"), value=True, key="ov_col")
     with _ov_col2:
-        _ov_min = pd.Timestamp("2016-02-01").date()
-        _ov_max = max_date
-        ov_date_range = st.date_input(
-            t("periodo"),
-            value=(_ov_min, _ov_max),
-            min_value=_ov_min,
-            max_value=_ov_max,
-            key="ov_dates",
-        )
+        ov_tren = st.checkbox(mode_label("TREN"),      value=True, key="ov_tren")
+    with _ov_col3:
+        ov_sub  = st.checkbox(mode_label("SUBTE"),     value=True, key="ov_sub")
+    with _ov_col4:
+        ov_start_date = st.date_input(t("desde"), value=_ov_min, min_value=_ov_min, max_value=_ov_max, key="ov_start")
+    with _ov_col5:
+        ov_end_date   = st.date_input(t("hasta"), value=_ov_max, min_value=_ov_min, max_value=_ov_max, key="ov_end")
+    ov_modes = [m for m, on in [("COLECTIVO", ov_col), ("TREN", ov_tren), ("SUBTE", ov_sub)] if on]
     if not ov_modes:
-        st.info("Seleccioná al menos un modo." if st.session_state.lang == "es" else "Select at least one mode.")
         ov_modes = DASHBOARD_MODES
-    ov_start = pd.Timestamp(ov_date_range[0]) if len(ov_date_range) == 2 else pd.Timestamp("2016-02-01")
-    ov_end   = pd.Timestamp(ov_date_range[1]) if len(ov_date_range) == 2 else pd.Timestamp(max_date)
+    ov_start = pd.Timestamp(ov_start_date)
+    ov_end   = pd.Timestamp(ov_end_date)
 
     fig = go.Figure()
 
@@ -561,31 +555,25 @@ with tab_ov:
     explainer("an_heatmap_explainer")
 
     # ── Heatmap local selectors ────────────────────────────────────────────
-    _hm_col1, _hm_col2, _hm_col3 = st.columns([2, 2, 2])
+    _hm_min = pd.Timestamp("2020-01-01").date()
+    _hm_col1, _hm_col2, _hm_col3, _hm_col4, _hm_col5, _hm_col6 = st.columns([1, 1, 1, 2, 2, 2])
     with _hm_col1:
-        hm_modes = st.multiselect(
-            t("modos"),
-            options=DASHBOARD_MODES,
-            default=DASHBOARD_MODES,
-            format_func=mode_label,
-            key="hm_modes",
-        )
+        hm_col  = st.checkbox(mode_label("COLECTIVO"), value=True, key="hm_col")
     with _hm_col2:
-        _hm_min = pd.Timestamp("2020-01-01").date()
-        hm_date_range = st.date_input(
-            t("periodo"),
-            value=(_hm_min, max_date),
-            min_value=_hm_min,
-            max_value=max_date,
-            key="hm_dates",
-        )
+        hm_tren = st.checkbox(mode_label("TREN"),      value=True, key="hm_tren")
     with _hm_col3:
+        hm_sub  = st.checkbox(mode_label("SUBTE"),     value=True, key="hm_sub")
+    with _hm_col4:
+        hm_start_date = st.date_input(t("desde"), value=_hm_min, min_value=_hm_min, max_value=max_date, key="hm_start")
+    with _hm_col5:
+        hm_end_date   = st.date_input(t("hasta"), value=max_date, min_value=_hm_min, max_value=max_date, key="hm_end")
+    with _hm_col6:
         hm_excl_lockdown = st.checkbox(t("ov_excl_lockdown"), value=False, key="hm_excl")
-
+    hm_modes = [m for m, on in [("COLECTIVO", hm_col), ("TREN", hm_tren), ("SUBTE", hm_sub)] if on]
     if not hm_modes:
         hm_modes = DASHBOARD_MODES
-    hm_start = pd.Timestamp(hm_date_range[0]) if len(hm_date_range) == 2 else pd.Timestamp("2020-01-01")
-    hm_end   = pd.Timestamp(hm_date_range[1]) if len(hm_date_range) == 2 else pd.Timestamp(max_date)
+    hm_start = pd.Timestamp(hm_start_date)
+    hm_end   = pd.Timestamp(hm_end_date)
 
     # Compute heatmap from daily data so filters can be applied
     _hm_daily = df_daily[
@@ -922,13 +910,14 @@ with tab_rs:
     finding("rs_finding")
 
     # ── Mode selector shared by both AMBA charts ───────────────────────────
-    rs_modes = st.multiselect(
-        t("modos"),
-        options=DASHBOARD_MODES,
-        default=DASHBOARD_MODES,
-        format_func=mode_label,
-        key="rs_modes",
-    )
+    _rs_col1, _rs_col2, _rs_col3 = st.columns([1, 1, 1])
+    with _rs_col1:
+        rs_col  = st.checkbox(mode_label("COLECTIVO"), value=True, key="rs_col")
+    with _rs_col2:
+        rs_tren = st.checkbox(mode_label("TREN"),      value=True, key="rs_tren")
+    with _rs_col3:
+        rs_sub  = st.checkbox(mode_label("SUBTE"),     value=True, key="rs_sub")
+    rs_modes = [m for m, on in [("COLECTIVO", rs_col), ("TREN", rs_tren), ("SUBTE", rs_sub)] if on]
     if not rs_modes:
         rs_modes = DASHBOARD_MODES
 

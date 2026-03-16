@@ -29,6 +29,22 @@ FORECAST_MONTHS = 6
 # the purpose of Prophet forecasting.
 _MACRO_SHOCK_COLORS = {"purple"}
 
+# Per-mode changepoint_prior_scale.
+# Controls how flexible the trend is between explicit changepoints.
+# Two effects: (1) higher = model can follow structural breaks like the
+# post-COVID SUBTE decline that never recovered; (2) higher = sampled future
+# trajectories diverge more from each other, so the CI fans out with horizon
+# instead of staying nearly flat. Same model architecture for all modes —
+# only this tuning parameter differs.
+#   COLECTIVO: stable trend, small bump for visible CI growth
+#   TREN:      pre-COVID structural decline, moderate flexibility needed
+#   SUBTE:     post-COVID structural break — most flexibility required
+_MODE_CHANGEPOINT_PRIOR: dict[str, float] = {
+    "COLECTIVO": 0.05,
+    "TREN":      0.10,
+    "SUBTE":     0.20,
+}
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -151,16 +167,50 @@ def _build_covid_impact(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _make_future(model, horizon: int, use_covid_regressor: bool = False) -> pd.DataFrame:
+def _build_recovery_momentum(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Continuous regressor capturing the decelerating post-COVID recovery shape.
+
+    Value = log(1 + months_since_2022-01) for dates on or after Jan 2022, 0 before.
+
+    Motivation: post-COVID ridership recovered fast in early 2022 then decelerated
+    toward a new lower equilibrium. A piecewise linear trend can't capture this
+    concave shape, leaving autocorrelated residuals in SUBTE and TREN.
+    The log transformation matches the observed deceleration without imposing an
+    arbitrary ceiling. In the forecast window the value continues growing
+    logarithmically, representing ongoing (slow) normalization.
+    """
+    REOPEN = pd.Timestamp("2022-01-01")
+    df = df.copy()
+    months_elapsed = (
+        (df["ds"].dt.year  - REOPEN.year)  * 12
+        + (df["ds"].dt.month - REOPEN.month)
+    ).clip(lower=0)
+    df["recovery_momentum"] = np.log1p(months_elapsed)
+    return df
+
+
+def _forecast_floor(df: pd.DataFrame) -> float:
+    """
+    Minimum plausible ridership for post-processing clip on forecast outputs.
+    Set at 50% of the historical minimum (including COVID lows) — represents
+    a bare-minimum essential-worker scenario well below normal operations.
+    Prevents the linear trend from extrapolating to zero or negative values
+    without distorting the model's trend shape (unlike logistic growth).
+    """
+    return float(df["y"].min() * 0.50)
+
+
+def _make_future(model, horizon: int) -> pd.DataFrame:
     """
     Build the future DataFrame for Prophet, including all regressors.
-    covid_impact is always included — it will be 0 for all forecast dates
-    (COVID period ended 2021-12, so no future rows will be flagged).
+    covid_impact is always 0 for future rows — COVID period ended 2021-12.
     """
     future = model.make_future_dataframe(periods=horizon, freq="MS")
     future = _build_fare_pressure(future)
     future = _build_macro_shock(future)
     future = _build_covid_impact(future)
+    future = _build_recovery_momentum(future)
     return future
 
 
@@ -221,9 +271,9 @@ def forecast_ridership(
         df = _build_fare_pressure(df)
         df = _build_macro_shock(df)
         df = _build_covid_impact(df)
+        df = _build_recovery_momentum(df)
 
-        use_covid_regressor = True
-
+        floor     = _forecast_floor(df)
         last_date = df["ds"].max()
 
         # Only use changepoints that fall within the training window
@@ -232,20 +282,22 @@ def forecast_ridership(
             if cp >= df["ds"].min()
         ]
 
+        cps = _MODE_CHANGEPOINT_PRIOR.get(mode, 0.05)
         model = Prophet(
             yearly_seasonality=True,
             weekly_seasonality=False,
             daily_seasonality=False,
             seasonality_mode="multiplicative",
             interval_width=0.80,
-            changepoint_prior_scale=0.03,   # tighter — we're providing explicit changepoints
+            changepoint_prior_scale=cps,
             changepoint_range=0.95,
             changepoints=known_changepoints if known_changepoints else None,
         )
         model.add_country_holidays(country_name="AR")
-        model.add_regressor("fare_pressure", standardize=True)
-        model.add_regressor("macro_shock",   standardize=False)
-        model.add_regressor("covid_impact",  standardize=False)
+        model.add_regressor("fare_pressure",       standardize=True)
+        model.add_regressor("macro_shock",         standardize=False)
+        model.add_regressor("covid_impact",        standardize=False)
+        model.add_regressor("recovery_momentum",   standardize=True)
 
         # Suppress Stan/cmdstanpy output
         import logging
@@ -266,6 +318,14 @@ def forecast_ridership(
                 "trend", "additive_terms", "is_forecast"]
         cols = [c for c in cols if c in forecast.columns]
         forecast = forecast[cols].copy()
+
+        # Clip forecast outputs to the floor — prevents the linear trend from
+        # extrapolating to zero or negative values in the forecast window.
+        # Applied only to future rows; historical fitted values are unchanged.
+        future_mask = forecast["is_forecast"]
+        for col in ["yhat", "yhat_lower", "yhat_upper"]:
+            if col in forecast.columns:
+                forecast.loc[future_mask, col] = forecast.loc[future_mask, col].clip(lower=floor)
 
         # Merge in the actuals so the dashboard can plot both on the same figure
         forecast = forecast.merge(

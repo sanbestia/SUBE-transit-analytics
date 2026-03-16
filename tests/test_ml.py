@@ -18,7 +18,9 @@ from analytics.ml import (
     _build_covid_impact,
     _build_fare_pressure,
     _build_macro_shock,
+    _build_recovery_momentum,
     _all_changepoints,
+    _forecast_floor,
     forecast_summary,
 )
 
@@ -425,3 +427,98 @@ class TestForecastRidership:
         from analytics.ml import forecast_ridership
         result = forecast_ridership(conn, modes=["COLECTIVO"], horizon=3)
         assert "COLECTIVO" not in result
+
+
+# ── _build_recovery_momentum ───────────────────────────────────────────────
+
+class TestBuildRecoveryMomentum:
+    def test_returns_dataframe(self):
+        df = _date_range_df("2022-01-01", 12)
+        result = _build_recovery_momentum(df)
+        assert isinstance(result, pd.DataFrame)
+
+    def test_adds_recovery_momentum_column(self):
+        df = _date_range_df("2022-01-01", 12)
+        result = _build_recovery_momentum(df)
+        assert "recovery_momentum" in result.columns
+
+    def test_does_not_mutate_input(self):
+        df = _date_range_df("2021-01-01", 24)
+        _build_recovery_momentum(df)
+        assert "recovery_momentum" not in df.columns
+
+    def test_zero_before_2022(self):
+        df = _date_range_df("2020-01-01", 24)  # Jan 2020 – Dec 2021
+        result = _build_recovery_momentum(df)
+        assert (result["recovery_momentum"] == 0).all()
+
+    def test_zero_at_2021_12(self):
+        df = pd.DataFrame({"ds": [pd.Timestamp("2021-12-01")]})
+        result = _build_recovery_momentum(df)
+        assert result["recovery_momentum"].iloc[0] == 0.0
+
+    def test_positive_from_2022_onward(self):
+        df = _date_range_df("2022-01-01", 36)
+        result = _build_recovery_momentum(df)
+        assert (result["recovery_momentum"] >= 0).all()
+        # After month 0 (Jan 2022) values should be > 0
+        assert result["recovery_momentum"].iloc[1] > 0
+
+    def test_first_post_reopen_row_is_zero(self):
+        # Jan 2022 is month 0 elapsed → log1p(0) = 0
+        df = pd.DataFrame({"ds": [pd.Timestamp("2022-01-01")]})
+        result = _build_recovery_momentum(df)
+        assert result["recovery_momentum"].iloc[0] == pytest.approx(0.0)
+
+    def test_values_are_log_shaped(self):
+        """log1p is concave — increments should decrease over time."""
+        df = _date_range_df("2022-01-01", 36)
+        result = _build_recovery_momentum(df)
+        post = result.loc[result["recovery_momentum"] > 0, "recovery_momentum"]
+        diffs = post.diff().dropna()
+        assert (diffs >= 0).all(), "momentum should be non-decreasing"
+        # Concavity: second differences should be ≤ 0 (growth rate slows)
+        second_diffs = diffs.diff().dropna()
+        assert (second_diffs <= 1e-9).all(), "log growth should be concave"
+
+    def test_numeric_dtype(self):
+        df = _date_range_df("2022-01-01", 12)
+        result = _build_recovery_momentum(df)
+        assert pd.api.types.is_numeric_dtype(result["recovery_momentum"])
+
+
+# ── _forecast_floor ────────────────────────────────────────────────────────
+
+class TestForecastFloor:
+    def _make_df(self, values: list) -> pd.DataFrame:
+        return pd.DataFrame({
+            "ds": pd.date_range("2022-01-01", periods=len(values), freq="MS"),
+            "y":  values,
+        })
+
+    def test_returns_float(self):
+        df = self._make_df([1_000_000, 900_000, 800_000])
+        result = _forecast_floor(df)
+        assert isinstance(result, float)
+
+    def test_is_half_of_minimum(self):
+        df = self._make_df([1_000_000, 500_000, 800_000])
+        result = _forecast_floor(df)
+        assert result == pytest.approx(250_000.0)
+
+    def test_uses_absolute_minimum(self):
+        """Floor is driven by the single lowest row, not the mean."""
+        df = self._make_df([2_000_000, 2_000_000, 200_000])
+        result = _forecast_floor(df)
+        assert result == pytest.approx(100_000.0)
+
+    def test_floor_is_positive_when_data_is_positive(self):
+        df = self._make_df([500_000, 600_000, 700_000])
+        result = _forecast_floor(df)
+        assert result > 0
+
+    def test_floor_below_all_values(self):
+        values = [1_000_000, 900_000, 800_000, 600_000]
+        df = self._make_df(values)
+        result = _forecast_floor(df)
+        assert result < min(values)

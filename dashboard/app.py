@@ -583,7 +583,7 @@ with tab_ov:
     ].copy()
     if hm_excl_lockdown:
         _hm_daily = _hm_daily[~(
-            (_hm_daily["fecha"] >= pd.Timestamp("2020-04-01")) &
+            (_hm_daily["fecha"] >= pd.Timestamp("2020-03-01")) &
             (_hm_daily["fecha"] <= pd.Timestamp("2021-07-31"))
         )]
     if not _hm_daily.empty:

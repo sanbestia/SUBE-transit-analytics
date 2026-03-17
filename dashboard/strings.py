@@ -30,7 +30,7 @@ STRINGS = {
 
         # ── Overview ──────────────────────────────────────────────────────
         "ov_series_title":    "Ridership diario",
-        "ov_excl_lockdown":   "Excluir lockdown (abr 2020 – jul 2021)",
+        "ov_excl_lockdown":   "Excluir lockdown (mar 2020 – jul 2021)",
         "ov_series_explainer": "Cantidad de viajes por modo de transporte. "
                                "**Antes de 2020**: datos mensuales del sistema SUBE expresados como promedio diario (un punto por mes). "
                                "El COLECTIVO tiene datos desde 2013; SUBTE y TREN desde 2016, cuando la integración SUBE alcanzó cobertura completa. "
@@ -342,7 +342,7 @@ actual de presión tarifaria se mantiene.""",
 
         # ── Overview ──────────────────────────────────────────────────────
         "ov_series_title":    "Daily ridership",
-        "ov_excl_lockdown":   "Exclude lockdown (Apr 2020 – Jul 2021)",
+        "ov_excl_lockdown":   "Exclude lockdown (Mar 2020 – Jul 2021)",
         "ov_series_explainer": "Trip counts by transport mode. "
                                "**Before 2020**: monthly SUBE data expressed as a daily average (one point per month). "
                                "COLECTIVO data goes back to 2013; SUBTE and TREN from 2016, when SUBE integration reached full coverage. "

@@ -568,7 +568,7 @@ with tab_ov:
     with _hm_col5:
         hm_end_date   = st.date_input(t("hasta"), value=max_date, min_value=_hm_min, max_value=max_date, key="hm_end")
     with _hm_col6:
-        hm_excl_lockdown = st.checkbox(t("ov_excl_lockdown"), value=False, key="hm_excl")
+        hm_excl_lockdown = st.checkbox(t("ov_excl_lockdown"), value=True, key="hm_excl")
     hm_modes = [m for m, on in [("COLECTIVO", hm_col), ("TREN", hm_tren), ("SUBTE", hm_sub)] if on]
     if not hm_modes:
         hm_modes = DASHBOARD_MODES

@@ -47,6 +47,7 @@ STRINGS = {
         "ov_split_y":         "Participación (%)",
         "ov_empresas_title":  "Top 10 empresas por ridership total (2020–presente)",
         "ov_empresas_explainer": "Las diez operadoras con mayor cantidad de viajes acumulados desde 2020. "
+                                  "El ranking suma todos los viajes registrados por empresa en cada mes y modo en que operó. "
                                   "Cada empresa puede operar uno o varios modos. EMOVA (SUBTE) domina en términos absolutos "
                                   "porque concentra toda la red de subterráneos de Buenos Aires en una sola concesión.",
         "ov_empresas_y":      "Total de viajes",
@@ -80,6 +81,7 @@ STRINGS = {
         # ── Modal substitution ────────────────────────────────────────────
         "ms_mom_title":       "Variación mensual % por modo — serie completa",
         "ms_mom_explainer":   "Variación mes a mes de cada modo a lo largo de toda la serie. "
+                               "Cada barra muestra cuánto creció o cayó un modo respecto al mes anterior, expresado en porcentaje. "
                                "Permite identificar cómo cada evento histórico afectó de manera diferente a cada modo: "
                                "el SUBTE reacciona más violentamente a shocks discretos (lockdowns, paros) porque tiene menor "
                                "sustitución posible; el COLECTIVO es más resiliente porque sirve zonas sin cobertura de subte o tren. "
@@ -91,6 +93,7 @@ STRINGS = {
                                "sugiere que los pasajeros que volvieron primero son los que no tienen alternativa al subte.",
         "ms_yoy_title":       "Variación año a año % — todos los modos",
         "ms_yoy_explainer":   "Compara cada mes con el mismo mes del año anterior para eliminar estacionalidad. "
+                               "Por ejemplo, julio 2024 se compara contra julio 2023, no contra junio 2024 — así se evita confundir la caída de invierno con una caída real. "
                                "Muestra si los modos crecen o caen al mismo ritmo ante cada evento, "
                                "o si uno diverge del resto.",
         "rs_amba_title":       "Ridership mensual: AMBA vs Interior",
@@ -172,7 +175,10 @@ que el modelo lo absorbió en la tendencia. STL detecta sorpresas locales, no ca
         "an_anom_event":       "Evento conocido",
         "an_anom_explainer":   "Las anomalías sin evento conocido son las más interesantes — "
                                 "corresponden a días donde algo inusual ocurrió pero no está registrado en nuestra lista de eventos. "
-                                "Un z-score de 3 significa que el residuo está 3 desvíos estándar por encima o debajo de lo esperado.",
+                                "El modelo STL primero elimina el patrón estacional y la tendencia de largo plazo, "
+                                "y mide qué tan lejos está cada día de lo que se esperaba dado ese contexto. "
+                                "Un z-score de 3 significa que ese día fue tan inusual que, si todo fuera normal, "
+                                "ocurriría menos de una vez cada 300 días.",
 
         "kpi_explainer": "Métricas calculadas sobre el total histórico disponible (todos los modos). "
                           "El **día pico** es el día individual con más viajes registrados. "
@@ -205,18 +211,14 @@ La línea **contrafactual** es la proyección del modelo asumiendo que el shock 
 — es decir, si la tendencia pre-2024 hubiera continuado sin interrupciones. \
 La brecha sombreada entre ambas líneas representa el impacto estimado del shock.
 
-**Método: Regresión segmentada (Interrupted Time Series)**. \
-Se ajusta un modelo OLS con:
-- β₂ (cambio de nivel): salto inmediato en el mes del tratamiento
-- β₃ (cambio de pendiente): deriva mensual acumulada después del tratamiento
-- Controles: estacionalidad mensual, COVID-19, tendencia de largo plazo
+**Método**: el modelo aprende el comportamiento del ridership en los años previos al shock \
+(controlando por estacionalidad, COVID-19 y tendencia de largo plazo) y luego proyecta hacia adelante \
+como si el shock no hubiera ocurrido. Mide dos cosas: si hubo un salto abrupto en el mes de los aumentos \
+y si la tendencia mensual cambió de forma acumulada después.
 
-**Errores estándar**: OLS para Colectivo (sin autocorrelación); \
-Newey-West HAC-12 para Subte y Tren (autocorrelación residual detectada).
-
-**Limitación importante**: β₂ y β₃ no pueden separar el efecto del precio del boleto \
-del colapso del ingreso real producto de la devaluación de diciembre 2023 (+118%). \
-La elasticidad implícita es una cota superior de la elasticidad precio pura.""",
+**Limitación importante**: el modelo no puede separar el efecto de la suba de tarifas \
+del efecto de la devaluación de diciembre 2023 (+118%) que ocurrió al mismo tiempo. \
+El impacto estimado refleja ambos factores combinados.""",
         "rs_its_finding":     "**El shock tarifario de 2024 produjo erosión gradual, no una caída abrupta.** "
                               "Ningún modo muestra un cambio de nivel estadísticamente significativo en enero 2024 — "
                               "el ridership resistió el impacto inicial. Sin embargo, **Colectivo** acumula una "
@@ -359,6 +361,7 @@ actual de presión tarifaria se mantiene.""",
         "ov_split_y":         "Share (%)",
         "ov_empresas_title":  "Top 10 operators by total ridership (2020–present)",
         "ov_empresas_explainer": "The ten operators with the highest cumulative trip count since 2020. "
+                                  "The ranking adds up all recorded trips per operator across every month and mode they operated. "
                                   "Each company may operate one or more modes. EMOVA (SUBTE) dominates in absolute terms "
                                   "because it holds the concession for the entire Buenos Aires subway network.",
         "ov_empresas_y":      "Total trips",
@@ -393,6 +396,7 @@ actual de presión tarifaria se mantiene.""",
         # ── Modal substitution ────────────────────────────────────────────
         "ms_mom_title":       "Month-over-month % change by mode — full series",
         "ms_mom_explainer":   "Month-over-month change for each mode across the entire series. "
+                               "Each bar shows how much a mode grew or fell compared to the previous month, expressed as a percentage. "
                                "Reveals how each historical event affected each mode differently: "
                                "SUBTE reacts more violently to discrete shocks (lockdowns, strikes) because it has fewer substitutes; "
                                "COLECTIVO is more resilient because it serves areas without subway or rail coverage. "
@@ -404,6 +408,7 @@ actual de presión tarifaria se mantiene.""",
                                "it suggests the passengers who returned first had no alternative to the subway.",
         "ms_yoy_title":       "Year-over-year % — all modes",
         "ms_yoy_explainer":   "Compares each month to the same month in the prior year to remove seasonality. "
+                               "For example, July 2024 is compared against July 2023, not June 2024 — this avoids mistaking a normal winter dip for a real decline. "
                                "Shows whether modes grow or fall at the same rate around each event, "
                                "or whether one diverges from the rest.",
 
@@ -487,7 +492,10 @@ that the model absorbed it into the trend. STL detects local surprises, not grad
         "an_anom_event":       "Known event",
         "an_anom_explainer":   "Anomalies without a known event label are the most interesting — "
                                 "they correspond to days where something unusual happened that isn't in our events list. "
-                                "A z-score of 3 means the residual is 3 standard deviations above or below what was expected.",
+                                "The STL model first strips out the seasonal pattern and the long-term trend, "
+                                "then measures how far each day sits from what would have been expected in that context. "
+                                "A z-score of 3 means the day was so unusual that, under normal conditions, "
+                                "it would happen less than once every 300 days.",
 
         "kpi_explainer": "Metrics calculated over the full historical dataset (all modes). "
                           "**Peak day** is the single day with the highest recorded trips. "
@@ -520,18 +528,14 @@ The **counterfactual** line is the model's projection assuming the fare shock *h
 — i.e., if the pre-2024 trend had continued uninterrupted. \
 The shaded gap between the two lines is the estimated impact of the shock.
 
-**Method: Segmented regression (Interrupted Time Series)**. \
-OLS model with:
-- β₂ (level change): immediate step at the treatment month
-- β₃ (slope change): cumulative monthly drift after treatment
-- Controls: monthly seasonality, COVID-19, long-run trend
+**Method**: the model learns ridership behaviour from the years before the shock \
+(controlling for seasonality, COVID-19, and long-run trend) and then projects forward \
+as if the shock had never happened. It measures two things: whether there was an abrupt jump \
+in the month of the fare hikes, and whether the monthly trend shifted gradually afterwards.
 
-**Standard errors**: OLS for Bus (no autocorrelation detected); \
-Newey-West HAC-12 for Subway and Train (residual autocorrelation detected).
-
-**Important limitation**: β₂ and β₃ cannot separate the fare price effect from \
-the real-income collapse caused by the December 2023 devaluation (+118%). \
-The implied elasticity is an upper bound on the pure price elasticity of demand.""",
+**Important limitation**: the model cannot separate the fare hike effect from \
+the real-income collapse caused by the December 2023 devaluation (+118%) that happened simultaneously. \
+The estimated impact reflects both factors combined.""",
         "rs_its_finding":     "**The 2024 fare shock produced gradual erosion, not an abrupt drop.** "
                               "No mode shows a statistically significant level change at January 2024 — "
                               "ridership held on impact. However, **Bus** accumulates a trend decline of "

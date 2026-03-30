@@ -261,17 +261,27 @@ def _staggered_annotations(
 
     position="top"    — labels start at 0.98 and step downward  (events)
     position="bottom" — labels start at 0.02 and step upward    (fare hikes)
+
+    Staggering algorithm:
+        Each label is assigned a y position in paper coordinates (0–1).
+        Starting from BASE_Y, it steps away if it would overlap an already-placed
+        label. Two labels clash when they are both close in time (their rendered
+        text widths overlap) AND close in y (within one step of each other).
+        DAYS_PER_CHAR converts character count to an approximate time-axis width.
     """
+    # Approximate width of one character in days on the time axis —
+    # used to estimate whether two text labels would overlap horizontally.
     DAYS_PER_CHAR = 11
+    # Vertical gap between stagger levels in paper coordinates (0–1).
     LINE_STEP     = 0.05
 
     if position == "bottom":
-        BASE_Y   = 0.02
-        STEP_DIR = +1
+        BASE_Y   = 0.02   # fare hike labels start near the bottom
+        STEP_DIR = +1     # and step upward to avoid overlap
         yanchor  = "bottom"
     else:
-        BASE_Y   = 0.98
-        STEP_DIR = -1
+        BASE_Y   = 0.98   # event labels start near the top
+        STEP_DIR = -1     # and step downward
         yanchor  = "top"
 
     # Infer x range from existing traces if not supplied
@@ -285,6 +295,7 @@ def _staggered_annotations(
             x_min = x_min or min(all_x)
             x_max = x_max or max(all_x)
 
+    # Only draw annotations within the visible x range
     if x_min is not None and x_max is not None:
         entries = [
             e for e in entries
@@ -298,9 +309,11 @@ def _staggered_annotations(
     hovers = [e["hover"] for e in entries]
     colors = [e["color"] for e in entries]
 
+    # Track already-placed labels as (timestamp, y_position, pixel_width)
     placed: list[tuple] = []
 
     def clashes(ts, y, label):
+        """Return True if this label would overlap any already-placed label."""
         new_width = len(label) * DAYS_PER_CHAR
         for p_ts, p_y, p_width in placed:
             if (abs((ts - p_ts).days) < (new_width + p_width) / 2
@@ -311,6 +324,7 @@ def _staggered_annotations(
     for ev in entries:
         ts = ev["ts"]
         y  = BASE_Y
+        # Keep stepping until we find a y level with no overlap
         while clashes(ts, y, ev["label"]):
             y += STEP_DIR * LINE_STEP
         placed.append((ts, y, len(ev["label"]) * DAYS_PER_CHAR))

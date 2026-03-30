@@ -140,6 +140,8 @@ def load(df: pd.DataFrame, conn: duckdb.DuckDBPyConnection | None = None) -> Non
 def _create_views(conn: duckdb.DuckDBPyConnection) -> None:
     """Create SQL views for common dashboard queries."""
 
+    # All modes summed into a single daily total — used by the STL decomposition
+    # and the daily ridership chart's 7-day moving average.
     conn.execute("""
         CREATE OR REPLACE VIEW v_total_daily AS
         SELECT
@@ -154,6 +156,9 @@ def _create_views(conn: duckdb.DuckDBPyConnection) -> None:
         ORDER BY 1
     """)
 
+    # YoY % change per mode: LAG() looks back exactly 12 months (same month,
+    # previous year) within each mode partition — removes seasonal effects so
+    # you can compare e.g. Jan 2024 vs Jan 2023 without winter/summer bias.
     conn.execute("""
         CREATE OR REPLACE VIEW v_yoy_monthly AS
         SELECT
@@ -176,6 +181,9 @@ def _create_views(conn: duckdb.DuckDBPyConnection) -> None:
         ORDER BY month_start, modo
     """)
 
+    # Each mode's share of total monthly ridership.
+    # SUM() OVER (PARTITION BY month_start) gives the all-modes total for
+    # that month, so dividing gives the % share of each individual mode.
     conn.execute("""
         CREATE OR REPLACE VIEW v_modal_split AS
         SELECT
@@ -191,6 +199,8 @@ def _create_views(conn: duckdb.DuckDBPyConnection) -> None:
         ORDER BY month_start, modo
     """)
 
+    # Average daily trips for every (weekday, calendar month) combination,
+    # pooled across all years. Used for the heatmap chart — darker = more trips.
     conn.execute("""
         CREATE OR REPLACE VIEW v_weekday_heatmap AS
         SELECT
@@ -205,6 +215,9 @@ def _create_views(conn: duckdb.DuckDBPyConnection) -> None:
         ORDER BY 1, 2
     """)
 
+    # AMBA vs Interior monthly totals, with each region's share within its mode.
+    # amba='SI' = Buenos Aires metro area; amba='NO' = all other provinces.
+    # share_pct = region's trips / total trips for that mode in that month.
     conn.execute("""
         CREATE OR REPLACE VIEW v_amba_vs_interior AS
         SELECT

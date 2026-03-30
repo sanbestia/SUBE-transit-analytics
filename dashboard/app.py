@@ -43,6 +43,9 @@ st.markdown("""
 
 # ── Translations ───────────────────────────────────────────────────────────
 from dashboard.strings import STRINGS, MODE_LABELS
+# Functions from utils.py are imported with a leading underscore alias so they
+# can be wrapped in @st.cache_data below — the decorator must live in app.py
+# because importing streamlit at module level in utils.py would break unit tests.
 from analytics.causal import its_analysis as _its_analysis, build_counterfactual_df, TREATMENT_DATE as _ITS_TREATMENT
 from dashboard.utils import (
     load_monthly as _load_monthly,
@@ -78,6 +81,9 @@ def event_label(ev: dict) -> str:
 
 
 # ── DB helpers ─────────────────────────────────────────────────────────────
+# get_conn() uses @st.cache_resource (not @st.cache_data) because DuckDB
+# connections are not serialisable — cache_resource keeps a single live
+# object shared across reruns, while cache_data pickles/unpickles the result.
 @st.cache_resource
 def get_conn():
     if not DB_PATH.exists():
@@ -143,6 +149,9 @@ def load_its() -> pd.DataFrame:
 
 @st.cache_data(ttl=3600)
 def run_stl_analysis(mode_key: str, period: int, lang: str):
+    # Pre-filter anomalies into explained/unexplained inside the cache so that
+    # toggling the "show only unexplained" checkbox doesn't re-run STL — it just
+    # switches between two already-computed small DataFrames.
     from analytics.time_series import decompose_series, detect_anomalies
     result = decompose_series(
         get_conn(),
@@ -151,8 +160,8 @@ def run_stl_analysis(mode_key: str, period: int, lang: str):
     )
     if not result:
         return None, None, None, None
-    anomalies       = detect_anomalies(result["residual"], lang=lang)
-    anom            = anomalies[anomalies["is_anomaly"]].copy()
+    anomalies        = detect_anomalies(result["residual"], lang=lang)
+    anom             = anomalies[anomalies["is_anomaly"]].copy()
     anom_explained   = anom[anom["event_label"].notna() & (anom["event_label"] != "")]
     anom_unexplained = anom[anom["event_label"].isna()  | (anom["event_label"] == "")]
     return result, anom, anom_explained, anom_unexplained

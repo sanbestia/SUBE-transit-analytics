@@ -134,7 +134,10 @@ def clean_file(path: Path) -> pd.DataFrame:
     if suspicious > 0:
         logger.warning(f"  {suspicious} suspicious zero-usage weekday rows flagged")
 
-    # Flag statistical outliers per mode (>4 std deviations)
+    # Flag statistical outliers per mode (threshold = 4 std deviations).
+    # 4σ rather than the usual 3σ because transit data has legitimate spikes
+    # (e.g. holidays, strikes, festivals) that are real events, not errors.
+    # We want to catch only data-entry errors or feed glitches, not real peaks.
     for mode, group in df.groupby("modo"):
         mean = group["cantidad_usos"].mean()
         std  = group["cantidad_usos"].std()

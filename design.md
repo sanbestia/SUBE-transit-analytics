@@ -284,12 +284,12 @@ The Streamlit web application. Reads from DuckDB, builds Plotly charts, and rend
 - `load_daily_totals()` — daily trip counts per mode (2020–present)
 - `load_modal_split()` — percentage share per mode per month
 - `load_yoy()` — year-over-year % change per mode
-- `load_heatmap()` — average trips by weekday × calendar month
 - `load_amba_recovery()` — AMBA vs Interior monthly totals with recovery index
 - `load_amba_by_mode()` — monthly totals broken down by AMBA/Interior and mode
 - `load_top_empresas()` — top 10 operators by cumulative ridership
 - `load_by_provincia()` — total trips per province
 - `load_its()` — ITS regression results (cached; computation is expensive)
+- `run_stl_analysis(mode_key, period, lang)` — runs STL decomposition + anomaly detection; pre-filters anomalies into explained and unexplained subsets so the dashboard filter checkbox doesn't re-trigger the computation
 
 **Chart annotation helpers:**
 - `add_event_annotations(fig, y_ref, x_min, x_max)` — draws dotted vertical lines for historical events
@@ -298,13 +298,13 @@ The Streamlit web application. Reads from DuckDB, builds Plotly charts, and rend
 **Dashboard tabs:**
 | Tab | Contents |
 |-----|----------|
-| Data Structure | Daily ridership (with per-chart mode + date selectors), modal split area chart, top 10 operators bar chart |
-| Anomalies | STL decomposition chart + anomaly table; includes weekday × month heatmap with lockdown filter |
+| Data Structure | Daily ridership (per-chart mode checkboxes + From/To date pickers), modal split area chart, weekday × month heatmap (with lockdown exclusion option), top 10 operators bar chart |
+| Anomalies | STL decomposition chart with explained anomalies (yellow ×) and unexplained anomalies (red ×); filterable anomaly table (toggle to show only unexplained) |
 | Forecast | Prophet 6-month forecast per mode with confidence band, summary table |
 | Fare Impact | ITS counterfactual chart, gap (shaded area), per-mode metric cards |
 | COVID-19 | Monthly collapse chart, modal recovery index, YoY change |
 | Modal Substitution | Month-over-month % bars, modal share evolution, year-over-year % |
-| AMBA vs Interior | Absolute ridership, recovery index with rolling average, seasonal amplitude, province bar chart |
+| AMBA vs Interior | Absolute ridership (per-chart mode checkboxes), recovery index with rolling average, seasonal amplitude, province bar chart |
 
 All per-chart mode selectors are three individual checkboxes (one per mode, all on by default). Date selectors are two separate fields (From / To).
 

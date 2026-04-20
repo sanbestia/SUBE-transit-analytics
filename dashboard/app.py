@@ -5,16 +5,15 @@ Run with:
     streamlit run dashboard/app.py
 """
 
+import datetime as _dt
 import sys
 from pathlib import Path
 
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import DASHBOARD_MODES, DB_PATH, EVENTS, FARE_HIKES, MODE_COLORS, TRANSPORT_MODES
+from config import DASHBOARD_MODES, DB_PATH, FARE_HIKES, MODE_COLORS, TRANSPORT_MODES
 from etl.load import get_connection
 
 # ── Page config ────────────────────────────────────────────────────────────
@@ -43,10 +42,7 @@ st.markdown("""
 
 # ── Translations ───────────────────────────────────────────────────────────
 from dashboard.strings import STRINGS, MODE_LABELS
-# Functions from utils.py are imported with a leading underscore alias so they
-# can be wrapped in @st.cache_data below — the decorator must live in app.py
-# because importing streamlit at module level in utils.py would break unit tests.
-from analytics.causal import its_analysis as _its_analysis, build_counterfactual_df, TREATMENT_DATE as _ITS_TREATMENT
+from analytics.causal import its_analysis as _its_analysis, build_counterfactual_df, TREATMENT_DATE as ITS_TREATMENT
 from dashboard.utils import (
     load_monthly as _load_monthly,
     load_daily_totals as _load_daily_totals,
@@ -58,9 +54,6 @@ from dashboard.utils import (
     load_top_empresas as _load_top_empresas,
     load_by_provincia as _load_by_provincia,
     load_combined_monthly as _load_combined_monthly,
-    add_event_annotations as _add_event_annotations,
-    add_fare_annotations as _add_fare_annotations,
-    mode_color_map, hex_to_rgb, compute_mom_pct, index_to_baseline,
 )
 
 # ── Session state ──────────────────────────────────────────────────────────
@@ -76,14 +69,7 @@ def mode_label(mode: str) -> str:
     return MODE_LABELS[st.session_state.lang].get(mode, mode)
 
 
-def event_label(ev: dict) -> str:
-    return ev[f"label_{st.session_state.lang}"]
-
-
 # ── DB helpers ─────────────────────────────────────────────────────────────
-# get_conn() uses @st.cache_resource (not @st.cache_data) because DuckDB
-# connections are not serialisable — cache_resource keeps a single live
-# object shared across reruns, while cache_data pickles/unpickles the result.
 @st.cache_resource
 def get_conn():
     if not DB_PATH.exists():
@@ -149,9 +135,6 @@ def load_its() -> pd.DataFrame:
 
 @st.cache_data(ttl=3600)
 def run_stl_analysis(mode_key: str, period: int, lang: str):
-    # Pre-filter anomalies into explained/unexplained inside the cache so that
-    # toggling the "show only unexplained" checkbox doesn't re-run STL — it just
-    # switches between two already-computed small DataFrames.
     from analytics.time_series import decompose_series, detect_anomalies
     result = decompose_series(
         get_conn(),
@@ -167,39 +150,8 @@ def run_stl_analysis(mode_key: str, period: int, lang: str):
     return result, anom, anom_explained, anom_unexplained
 
 
-# ── Chart helpers ──────────────────────────────────────────────────────────
-
-def add_event_annotations(fig: go.Figure, y_ref: float = 0, x_min=None, x_max=None) -> go.Figure:
-    """Annotate fig with historical events (language from session state)."""
-    return _add_event_annotations(fig, lang=st.session_state.lang, x_min=x_min, x_max=x_max)
-
-
-def add_fare_annotations(
-    fig: go.Figure, y_ref: float = 0, scope_filter: list | None = None,
-    x_min=None, x_max=None,
-) -> go.Figure:
-    """Annotate fig with fare hike events (language from session state)."""
-    return _add_fare_annotations(fig, lang=st.session_state.lang,
-                                 scope_filter=scope_filter, x_min=x_min, x_max=x_max)
-
-
-def mode_color_map() -> dict:
-    return {mode: MODE_COLORS[mode] for mode in DASHBOARD_MODES}
-
-
-def explainer(key: str) -> None:
-    """Render a collapsible explainer box for any chart."""
-    with st.expander("ℹ️ " + ("¿Cómo leer este gráfico?" if st.session_state.lang == "es" else "How to read this chart?")):
-        st.markdown(t(key))
-
-
-def finding(key: str) -> None:
-    """Render a permanently-visible finding callout (not collapsible)."""
-    st.info(t(key), icon="💡")
-
-
 # ── Load data early (needed by sidebar and KPI cards) ──────────────────────
-daily = load_daily_totals()
+daily    = load_daily_totals()
 max_date = daily["fecha"].max()
 
 # ── Sidebar ────────────────────────────────────────────────────────────────
@@ -241,12 +193,10 @@ with st.sidebar:
 
 
 # ── Data loading ───────────────────────────────────────────────────────────
-# daily already loaded above; all other data loaded here.
-# Per-chart mode/date filters are applied locally within each tab.
-df_daily        = daily
-monthly         = load_monthly()
+df_daily         = daily
+monthly          = load_monthly()
 combined_monthly = load_combined_monthly()
-cmap            = mode_color_map()
+cmap             = {mode: MODE_COLORS[mode] for mode in DASHBOARD_MODES}
 
 
 # ── KPI cards ──────────────────────────────────────────────────────────────
@@ -273,7 +223,6 @@ with c4:
 st.caption(t("kpi_explainer"))
 
 # ── Key findings row ───────────────────────────────────────────────────────
-# Compute modal share for the most recent month in the full dataset
 _all_monthly = load_monthly()
 _last_month  = _all_monthly["month_start"].max()
 _last_month_df = _all_monthly[_all_monthly["month_start"] == _last_month]
@@ -298,9 +247,6 @@ with f3:
     _val = f"{_mode_share.get('SUBTE', 0):.1f}%"
     st.metric(t("finding_subte_drop"), _val, _share_sub)
 with f4:
-    # Compute cumulative compounded fare increase over the past 12 months
-    # Window: first day of (current month - 12) → last day of previous month
-    import datetime as _dt
     _today      = _dt.date.today()
     _win_end    = (_dt.date(_today.year, _today.month, 1) - _dt.timedelta(days=1))
     _win_start  = _dt.date(
@@ -337,1151 +283,64 @@ tab_ov, tab_an, tab_fc, tab_its, tab_cv, tab_ms, tab_rs = st.tabs([
     t("tab_its"), t("tab_covid"), t("tab_modal"), t("tab_resilience"),
 ])
 
+from dashboard.tabs.overview   import render as render_overview
+from dashboard.tabs.covid      import render as render_covid
+from dashboard.tabs.modal      import render as render_modal
+from dashboard.tabs.resilience import render as render_resilience
+from dashboard.tabs.its        import render as render_its
+from dashboard.tabs.anomalies  import render as render_anomalies
+from dashboard.tabs.forecast   import render as render_forecast
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB 1 — OVERVIEW
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_ov:
-
-    st.subheader(t("ov_series_title"))
-    explainer("ov_series_explainer")
-
-    # ── Per-chart selectors ────────────────────────────────────────────────
-    _ov_min = pd.Timestamp("2016-02-01").date()
-    _ov_max = max_date
-    _ov_col1, _ov_col2, _ov_col3, _ov_col4, _ov_col5 = st.columns([1, 1, 1, 2, 2])
-    with _ov_col1:
-        ov_col  = st.checkbox(mode_label("COLECTIVO"), value=True, key="ov_col")
-    with _ov_col2:
-        ov_tren = st.checkbox(mode_label("TREN"),      value=True, key="ov_tren")
-    with _ov_col3:
-        ov_sub  = st.checkbox(mode_label("SUBTE"),     value=True, key="ov_sub")
-    with _ov_col4:
-        ov_start_date = st.date_input(t("desde"), value=_ov_min, min_value=_ov_min, max_value=_ov_max, key="ov_start")
-    with _ov_col5:
-        ov_end_date   = st.date_input(t("hasta"), value=_ov_max, min_value=_ov_min, max_value=_ov_max, key="ov_end")
-    ov_modes = [m for m, on in [("COLECTIVO", ov_col), ("TREN", ov_tren), ("SUBTE", ov_sub)] if on]
-    if not ov_modes:
-        ov_modes = DASHBOARD_MODES
-    ov_start = pd.Timestamp(ov_start_date)
-    ov_end   = pd.Timestamp(ov_end_date)
-
-    fig = go.Figure()
-
-    # Pre-2020 monthly data — plotted as a line (same style as post-2020 MA)
-    # using average daily trips (total_usos / days_in_month) to match the daily scale.
-    # COLECTIVO extends to 2013; SUBTE/TREN only from 2016 (pre-2016 SUBE coverage incomplete).
-    _pre2020 = combined_monthly[
-        (combined_monthly["month_start"] >= ov_start) &
-        (combined_monthly["month_start"] < "2020-01-01") &
-        (combined_monthly["modo"].isin(ov_modes)) &
-        (
-            (combined_monthly["modo"] == "COLECTIVO") |
-            (combined_monthly["month_start"] >= "2016-01-01")
-        )
-    ].copy()
-    _has_pre2020 = False
-    if not _pre2020.empty:
-        _pre2020["days_in_month"] = _pre2020["month_start"].apply(
-            lambda d: (d + pd.offsets.MonthEnd(1)).day
-        )
-        _pre2020["avg_daily"] = (_pre2020["total_usos"] / _pre2020["days_in_month"]).round(0)
-        _has_pre2020 = True
-    for mode in ov_modes:
-        _pre_mode = _pre2020[_pre2020["modo"] == mode].sort_values("month_start") if _has_pre2020 else pd.DataFrame()
-        if _pre_mode.empty:
-            continue
-        fig.add_scatter(
-            x=_pre_mode["month_start"],
-            y=_pre_mode["avg_daily"],
-            mode="lines",
-            name=mode_label(mode),
-            line=dict(color=cmap[mode], width=2.5),
-            showlegend=False,
-            hovertemplate="%{x|%b %Y}<br>%{y:,.0f}<extra></extra>",
-        )
-
-    # Post-2020 daily data — raw (faint) + 7-day MA, filtered by local selectors
-    for mode in ov_modes:
-        mode_df = df_daily[
-            (df_daily["modo"] == mode) &
-            (df_daily["fecha"] >= ov_start) &
-            (df_daily["fecha"] <= ov_end) &
-            ~((df_daily["fecha"].dt.month == 1) & (df_daily["fecha"].dt.day == 1))
-        ].sort_values("fecha")
-        ma7 = mode_df["cantidad_usos"].rolling(7, min_periods=1).mean()
-        fig.add_scatter(
-            x=mode_df["fecha"], y=mode_df["cantidad_usos"],
-            mode="lines", name=f"{mode_label(mode)} (raw)",
-            line=dict(color=cmap[mode], width=1),
-            opacity=0.2, showlegend=False,
-        )
-        fig.add_scatter(
-            x=mode_df["fecha"], y=ma7,
-            mode="lines", name=mode_label(mode),
-            line=dict(color=cmap[mode], width=2.5),
-        )
-
-    # Dotted gap lines — connect last pre-2020 monthly point to first daily point (Jan 2 2020)
-    # per mode, and add a "missing data" bracket over the gap region.
-    _gap_x1 = pd.Timestamp("2020-01-02")
-    _has_gap_lines = False
-    if _has_pre2020:
-        for mode in ov_modes:
-            _pre_mode = _pre2020[_pre2020["modo"] == mode].sort_values("month_start")
-            if _pre_mode.empty:
-                continue
-            # Last pre-2020 point
-            _last_pre = _pre_mode.iloc[-1]
-            _gap_y0 = float(_last_pre["avg_daily"])
-            # First daily point for this mode on Jan 2 2020
-            _daily_jan2 = df_daily[
-                (df_daily["modo"] == mode) &
-                (df_daily["fecha"] == _gap_x1)
-            ]
-            if _daily_jan2.empty:
-                # Fall back to first available daily point
-                _daily_first = df_daily[df_daily["modo"] == mode].sort_values("fecha")
-                if _daily_first.empty:
-                    continue
-                _gap_x1_mode = _daily_first.iloc[0]["fecha"]
-                _gap_y1 = float(_daily_first.iloc[0]["cantidad_usos"])
-            else:
-                _gap_x1_mode = _gap_x1
-                _gap_y1 = float(_daily_jan2.iloc[0]["cantidad_usos"])
-
-            fig.add_scatter(
-                x=[_last_pre["month_start"], _gap_x1_mode],
-                y=[_gap_y0, _gap_y1],
-                mode="lines",
-                line=dict(color=cmap[mode], width=1.5, dash="dot"),
-                showlegend=False,
-                hoverinfo="skip",
-            )
-            _has_gap_lines = True
-
-    # Missing data bracket over the Oct 2019 → Jan 2 2020 gap
-    if _has_gap_lines:
-        _gap_x0 = pd.Timestamp("2019-10-01")
-    if show_events:
-        fig = add_event_annotations(fig)
-
-    # Compute y max across pre-2020 data for bracket positioning
-    if _has_pre2020:
-        _y_max_pre = float(_pre2020["avg_daily"].max())
-        # Also consider post-2020 daily max in case it's higher
-        _y_max_daily_pre_region = float(
-            df_daily[df_daily["fecha"] < "2020-06-01"]["cantidad_usos"].max()
-            if not df_daily.empty else _y_max_pre
-        )
-        _y_max = max(_y_max_pre, _y_max_daily_pre_region) if not pd.isna(_y_max_daily_pre_region) else _y_max_pre
-        _y_bracket_main  = _y_max * 1.04   # main bracket: just above data
-        _y_bracket_tick  = _y_max * 1.02
-        _y_bracket_label = _y_max * 1.06
-        _y_bracket_gap      = _y_max * 0.97
-        _y_bracket_gap_tick = _y_max * 0.955
-
-        # ── Main bracket: pre-2020 region ─────────────────────────────────
-        _bracket_x0 = _pre2020["month_start"].min()
-        _bracket_x1 = pd.Timestamp("2020-01-01")
-        _bracket_label = (
-            "Sin datos diarios — promedio por día calculado"
-            if st.session_state.lang == "es"
-            else "No daily data available — average per day shown"
-        )
-        fig.add_shape(type="line",
-                      x0=_bracket_x0, x1=_bracket_x1,
-                      y0=_y_bracket_main, y1=_y_bracket_main,
-                      xref="x", yref="y",
-                      line=dict(color="#888888", width=1.5))
-        fig.add_shape(type="line",
-                      x0=_bracket_x0, x1=_bracket_x0,
-                      y0=_y_bracket_tick, y1=_y_bracket_main,
-                      xref="x", yref="y",
-                      line=dict(color="#888888", width=1.5))
-        fig.add_shape(type="line",
-                      x0=_bracket_x1, x1=_bracket_x1,
-                      y0=_y_bracket_tick, y1=_y_bracket_main,
-                      xref="x", yref="y",
-                      line=dict(color="#888888", width=1.5))
-        fig.add_annotation(
-            x=_bracket_x0 + (_bracket_x1 - _bracket_x0) / 2,
-            y=_y_bracket_label,
-            xref="x", yref="y",
-            text=_bracket_label,
-            showarrow=False,
-            font=dict(size=10, color="#888888"),
-            xanchor="center", yanchor="bottom",
-        )
-
-    # ── Gap bracket: Oct 2019 → Jan 2 2020 ────────────────────────────────
-    if _has_gap_lines:
-        _gap_x0 = pd.Timestamp("2019-10-01")
-        _gap_label = (
-            "Sin datos disponibles"
-            if st.session_state.lang == "es"
-            else "No data available"
-        )
-        fig.add_shape(type="line",
-                      x0=_gap_x0, x1=_gap_x1,
-                      y0=_y_bracket_gap, y1=_y_bracket_gap,
-                      xref="x", yref="y",
-                      line=dict(color="#bbbbbb", width=1.2, dash="dot"))
-        fig.add_shape(type="line",
-                      x0=_gap_x0, x1=_gap_x0,
-                      y0=_y_bracket_gap_tick, y1=_y_bracket_gap,
-                      xref="x", yref="y",
-                      line=dict(color="#bbbbbb", width=1.2))
-        fig.add_shape(type="line",
-                      x0=_gap_x1, x1=_gap_x1,
-                      y0=_y_bracket_gap_tick, y1=_y_bracket_gap,
-                      xref="x", yref="y",
-                      line=dict(color="#bbbbbb", width=1.2))
-        fig.add_annotation(
-            x=_gap_x0 + (_gap_x1 - _gap_x0) / 2,
-            y=_y_bracket_gap * 1.005,
-            xref="x", yref="y",
-            text=_gap_label,
-            showarrow=False,
-            font=dict(size=9, color="#bbbbbb"),
-            xanchor="center", yanchor="bottom",
-        )
-
-    fig.update_layout(
-        height=675, template="plotly_white",
-        yaxis_title=t("ov_series_y"),
-        legend_title=None, hovermode="x unified",
-        xaxis=dict(range=[str(ov_start.date()), str(ov_end.date())]),
+    render_overview(
+        show_events=show_events,
+        df_daily=df_daily,
+        combined_monthly=combined_monthly,
+        cmap=cmap,
+        load_by_provincia=load_by_provincia,
+        load_top_empresas=load_top_empresas,
+        max_date=max_date,
     )
-    st.plotly_chart(fig, width="stretch")
 
-    # Province histogram (moved from Resilience tab)
-    _prov_title = ("Viajes totales por provincia" if st.session_state.lang == "es"
-                   else "Total trips by province")
-    st.subheader(_prov_title)
-    with st.expander("ℹ️ " + ("¿Cómo leer este gráfico?" if st.session_state.lang == "es" else "How to read this chart?")):
-        st.markdown(t("rs_prov_explainer"))
-
-    prov_df = load_by_provincia()
-    fig_prov = px.bar(
-        prov_df.sort_values("total"),
-        x="total", y="provincia",
-        orientation="h",
-        labels={"total": t("ov_empresas_y"), "provincia": "Provincia"},
-        template="plotly_white",
-        color="total",
-        color_continuous_scale="Blues",
-    )
-    fig_prov.update_layout(height=max(390, len(prov_df) * 22), coloraxis_showscale=False)
-    st.plotly_chart(fig_prov, width="stretch")
-    st.caption(t("rs_prov_caption"))
-
-    # Heatmap (moved from Analysis tab)
-    st.subheader(t("an_heatmap_title"))
-    explainer("an_heatmap_explainer")
-
-    # ── Heatmap local selectors ────────────────────────────────────────────
-    _hm_min = pd.Timestamp("2020-01-01").date()
-    _hm_col1, _hm_col2, _hm_col3, _hm_col4, _hm_col5, _hm_col6 = st.columns([1, 1, 1, 2, 2, 2])
-    with _hm_col1:
-        hm_col  = st.checkbox(mode_label("COLECTIVO"), value=True, key="hm_col")
-    with _hm_col2:
-        hm_tren = st.checkbox(mode_label("TREN"),      value=True, key="hm_tren")
-    with _hm_col3:
-        hm_sub  = st.checkbox(mode_label("SUBTE"),     value=True, key="hm_sub")
-    with _hm_col4:
-        hm_start_date = st.date_input(t("desde"), value=_hm_min, min_value=_hm_min, max_value=max_date, key="hm_start")
-    with _hm_col5:
-        hm_end_date   = st.date_input(t("hasta"), value=max_date, min_value=_hm_min, max_value=max_date, key="hm_end")
-    with _hm_col6:
-        hm_excl_lockdown = st.checkbox(t("ov_excl_lockdown"), value=True, key="hm_excl")
-    hm_modes = [m for m, on in [("COLECTIVO", hm_col), ("TREN", hm_tren), ("SUBTE", hm_sub)] if on]
-    if not hm_modes:
-        hm_modes = DASHBOARD_MODES
-    hm_start = pd.Timestamp(hm_start_date)
-    hm_end   = pd.Timestamp(hm_end_date)
-
-    # Compute heatmap from daily data so filters can be applied
-    _hm_daily = df_daily[
-        (df_daily["modo"].isin(hm_modes)) &
-        (df_daily["fecha"] >= hm_start) &
-        (df_daily["fecha"] <= hm_end)
-    ].copy()
-    if hm_excl_lockdown:
-        _hm_daily = _hm_daily[~(
-            (_hm_daily["fecha"] >= pd.Timestamp("2020-03-01")) &
-            (_hm_daily["fecha"] <= pd.Timestamp("2021-07-31"))
-        )]
-    if not _hm_daily.empty:
-        _hm_agg = (
-            _hm_daily.groupby(["fecha", "day_of_week", "month"])["cantidad_usos"].sum().reset_index()
-        )
-        pivot = (
-            _hm_agg.groupby(["day_of_week", "month"])["cantidad_usos"]
-            .mean()
-            .reset_index()
-            .pivot(index="day_of_week", columns="month", values="cantidad_usos")
-        )
-        pivot.index   = STRINGS[st.session_state.lang]["days"]
-        pivot.columns = [STRINGS[st.session_state.lang]["months"][c - 1] for c in pivot.columns]
-        fig_heat = px.imshow(
-            pivot,
-            color_continuous_scale="Blues",
-            labels={"color": t("an_heatmap_color")},
-            template="plotly_white",
-            aspect="auto",
-        )
-        fig_heat.update_layout(height=320)
-        st.plotly_chart(fig_heat, width="stretch")
-
-    st.subheader(t("ov_empresas_title"))
-    explainer("ov_empresas_explainer")
-
-    empresas = load_top_empresas()
-    empresas = empresas[empresas["modo"].isin(DASHBOARD_MODES)].copy()
-    empresas["modo_label"]    = empresas["modo"].map(mode_label)
-    empresas["empresa_short"] = empresas["nombre_empresa"].str[:35]
-
-    fig3 = px.bar(
-        empresas.sort_values("total_usos"),
-        x="total_usos", y="empresa_short",
-        color="modo_label",
-        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
-        orientation="h",
-        labels={"total_usos": t("ov_empresas_y"), "empresa_short": t("ov_empresas_x"), "modo_label": ""},
-        template="plotly_white",
-    )
-    fig3.update_layout(height=420)
-    st.plotly_chart(fig3, width="stretch")
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB 2 — COVID-19
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_cv:
-
-    finding("cv_finding")
-
-    # Load covid data for all charts in this tab (all modes)
-    covid_monthly = monthly[
-        (monthly["month_start"] >= "2020-01-01") &
-        (monthly["month_start"] <= "2022-07-01") &
-        (monthly["modo"].isin(DASHBOARD_MODES))
-    ].copy()
-    covid_monthly["modo_label"] = covid_monthly["modo"].map(mode_label)
-
-    st.subheader(t("cv_collapse_title"))
-    explainer("cv_collapse_explainer")
-
-    _norm_base = covid_monthly[covid_monthly["month_start"] == "2020-01-01"].set_index("modo")["total_usos"]
-    _norm_df   = covid_monthly.copy()
-    _norm_df["index_val"] = _norm_df.apply(
-        lambda r: (r["total_usos"] / _norm_base[r["modo"]]) * 100
-        if r["modo"] in _norm_base.index else float("nan"), axis=1,
+    render_covid(
+        monthly=monthly,
+        load_yoy=load_yoy,
+        cmap=cmap,
     )
-    _norm_df = _norm_df.dropna(subset=["index_val"])
 
-    if not _norm_df.empty:
-        _idx_label = "Índice (ene 2020 = 100)" if st.session_state.lang == "es" else "Index (Jan 2020 = 100)"
-        fig_norm = px.line(
-            _norm_df, x="month_start", y="index_val",
-            color="modo_label",
-            color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
-            markers=True,
-            labels={"index_val": _idx_label, "month_start": "", "modo_label": ""},
-            template="plotly_white",
-        )
-        fig_norm.add_hline(y=100, line_dash="dash", line_color="grey", opacity=0.4,
-                           annotation_text="Ene 2020 = 100" if st.session_state.lang == "es" else "Jan 2020 = 100")
-        fig_norm = add_event_annotations(fig_norm)
-        # Annotate each mode's April 2020 drop % directly on the chart
-        _drop_map = {
-            "COLECTIVO": ("−58%", "Bus −58%"),
-            "TREN":      ("−87%", "Train −87%"),
-            "SUBTE":     ("−92%", "Subway −92%"),
-        }
-        _apr2020 = pd.Timestamp("2020-04-01")
-        for _mode in DASHBOARD_MODES:
-            _apr_row = _norm_df[(_norm_df["modo"] == _mode) &
-                                (_norm_df["month_start"] == _apr2020)]
-            if not _apr_row.empty:
-                _lbl_es, _lbl_en = _drop_map.get(_mode, ("", ""))
-                _lbl = _lbl_es if st.session_state.lang == "es" else _lbl_en
-                fig_norm.add_annotation(
-                    x=_apr2020, y=float(_apr_row["index_val"].iloc[0]),
-                    text=f"<b>{_lbl}</b>",
-                    showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5,
-                    arrowcolor=MODE_COLORS[_mode], ax=0, ay=-36,
-                    font=dict(size=11, color=MODE_COLORS[_mode]),
-                    bgcolor="white", borderpad=3,
-                )
-        fig_norm.update_layout(height=675, hovermode="x unified")
-        st.plotly_chart(fig_norm, width="stretch")
-
-    st.divider()
-
-    # 4e — Modal recovery chart: MoM % for the 2021–2022 recovery window
-    st.subheader(t("cv_subst_recovery_title"))
-    explainer("cv_subst_recovery_explainer")
-
-    _rec_modes = DASHBOARD_MODES
-    recovery_monthly = monthly[
-        (monthly["month_start"] >= "2020-04-01") &
-        (monthly["month_start"] <= "2022-07-01") &
-        (monthly["modo"].isin(_rec_modes))
-    ].copy().sort_values(["modo", "month_start"])
-    recovery_monthly["modo_label"] = recovery_monthly["modo"].map(mode_label)
-
-    # Index to 100 at Apr 2020 — the lockdown trough (deepest point)
-    _rec_base = (recovery_monthly[recovery_monthly["month_start"] == "2020-04-01"]
-                 .set_index("modo")["total_usos"])
-    recovery_monthly["index_val"] = recovery_monthly.apply(
-        lambda r: (r["total_usos"] / _rec_base[r["modo"]]) * 100
-        if r["modo"] in _rec_base.index else float("nan"), axis=1,
-    )
-    recovery_monthly = recovery_monthly.dropna(subset=["index_val"])
-
-    if not recovery_monthly.empty:
-        _rec_label = ("Índice (abr 2020 = 100)" if st.session_state.lang == "es"
-                      else "Index (Apr 2020 = 100)")
-        fig_rec = px.line(
-            recovery_monthly, x="month_start", y="index_val",
-            color="modo_label",
-            color_discrete_map={mode_label(m): cmap[m] for m in _rec_modes if m in cmap},
-            markers=True,
-            labels={"index_val": _rec_label, "month_start": "", "modo_label": ""},
-            template="plotly_white",
-        )
-        fig_rec.add_hline(y=100, line_dash="dash", line_color="grey", opacity=0.4,
-                          annotation_text="Abr 2020 = 100" if st.session_state.lang == "es" else "Apr 2020 = 100")
-        fig_rec = add_event_annotations(fig_rec)
-        fig_rec.update_layout(height=570, hovermode="x unified")
-        st.plotly_chart(fig_rec, width="stretch")
-
-    st.divider()
-
-    st.subheader(t("cv_yoy_title"))
-    explainer("cv_yoy_explainer")
-
-    yoy = load_yoy()
-    yoy_covid = yoy[
-        (yoy["month_start"] >= "2020-01-01") &
-        (yoy["month_start"] <= "2022-07-01") &
-        (yoy["modo"].isin(DASHBOARD_MODES))
-    ].dropna(subset=["yoy_pct_change"]).copy()
-    yoy_covid["modo_label"] = yoy_covid["modo"].map(mode_label)
-
-    fig6 = px.bar(
-        yoy_covid, x="month_start", y="yoy_pct_change",
-        color="modo_label", barmode="group",
-        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
-        labels={"yoy_pct_change": t("cv_yoy_y"), "month_start": "", "modo_label": ""},
-        template="plotly_white",
-    )
-    fig6.add_hline(y=0, line_color="black", line_width=1)
-    fig6.update_layout(height=600, yaxis_ticksuffix="%", hovermode="x unified")
-    st.plotly_chart(fig6, width="stretch")
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB 3 — MODAL SUBSTITUTION
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_ms:
-
-    # Monthly change — one chart per mode so shapes are directly comparable
-    _ms_title = ("Variación mensual por modo" if st.session_state.lang == "es"
-                 else "Monthly change by mode")
-    _ms_expl  = (
-        "El **SUBTE** muestra picos más pronunciados que los otros modos, lo que sugiere que "
-        "tiene menor sustitución posible ante shocks discretos (lockdowns, paros, cortes de servicio): "
-        "quien depende del subte no tendría una alternativa inmediata comparable. "
-        "El **COLECTIVO** muestra mayor resiliencia, posiblemente porque cubre zonas sin red de subte o tren."
-        if st.session_state.lang == "es" else
-        "**SUBTE** shows sharper spikes than the other modes, suggesting it has fewer substitutes "
-        "when discrete shocks hit (lockdowns, strikes, service disruptions): "
-        "subway riders may have no comparable immediate alternative. "
-        "**COLECTIVO** shows greater resilience, possibly because it serves areas without subway or rail coverage."
+    render_modal(
+        show_events=show_events,
+        combined_monthly=combined_monthly,
+        load_yoy=load_yoy,
+        cmap=cmap,
     )
-    st.subheader(_ms_title)
-    with st.expander("ℹ️ " + ("¿Cómo leer este gráfico?" if st.session_state.lang == "es"
-                               else "How to read this chart?")):
-        st.markdown(_ms_expl)
 
-    _ms_full = combined_monthly[
-        combined_monthly["modo"].isin(DASHBOARD_MODES)
-    ].copy().sort_values(["modo", "month_start"])
-    _ms_full["mom_pct"]    = _ms_full.groupby("modo")["total_usos"].pct_change() * 100
-    _ms_full               = _ms_full.dropna(subset=["mom_pct"])
-
-    _mom_label   = "Variación mensual (%)" if st.session_state.lang == "es" else "Monthly change (%)"
-    _active_modes = [m for m in DASHBOARD_MODES if m in _ms_full["modo"].unique()]
-
-    if _active_modes:
-        from plotly.subplots import make_subplots
-        _n = len(_active_modes)
-        _fig_ms_sub = make_subplots(
-            rows=_n, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.02,
-            row_titles=[mode_label(m) for m in _active_modes],
-        )
-        for _i, _ms_mode in enumerate(_active_modes, start=1):
-            _ms_mode_df = _ms_full[_ms_full["modo"] == _ms_mode]
-            _fig_ms_sub.add_trace(
-                go.Scatter(
-                    x=_ms_mode_df["month_start"],
-                    y=_ms_mode_df["mom_pct"],
-                    mode="lines+markers",
-                    line=dict(color=cmap[_ms_mode], width=2),
-                    marker=dict(size=4),
-                    showlegend=False,
-                    hovertemplate="%{x|%b %Y}<br>%{y:.1f}%<extra></extra>",
-                ),
-                row=_i, col=1,
-            )
-            _fig_ms_sub.add_hline(
-                y=0, line_color="black", line_width=1, opacity=0.3,
-                row=_i, col=1,
-            )
-
-        # Set y-axis range explicitly for each subplot axis — update_yaxes with
-        # row/col is unreliable with shared_xaxes; direct yaxis keys are guaranteed.
-        _yaxis_updates = {f"yaxis{'' if i == 1 else i}": dict(range=[-50, 75], ticksuffix="%")
-                          for i in range(1, _n + 1)}
-        _fig_ms_sub.update_layout(
-            height=_n * 300,
-            template="plotly_white",
-            hovermode="x unified",
-            margin=dict(t=20, b=20),
-            **_yaxis_updates,
-        )
-        # Add event/fare annotations to the top subplot only (shared x-axis, lines span all rows)
-        if show_events:
-            _fig_ms_sub = add_event_annotations(_fig_ms_sub, x_min="2016-01-01")
-            _fig_ms_sub = add_fare_annotations(_fig_ms_sub, x_min="2016-01-01")
-        # Re-apply y-axis ranges and x-axis zoom after annotations
-        # (staggered_annotations calls update_xaxes/update_yaxes which resets them)
-        _ms_x_range = ["2016-01-01", str(combined_monthly["month_start"].max())]
-        _fig_ms_sub.update_layout(
-            xaxis=dict(range=_ms_x_range),
-            **_yaxis_updates,
-        )
-        st.plotly_chart(_fig_ms_sub, width="stretch")
-
-    st.divider()
-
-    # Modal share — full series
-    st.subheader(t("ms_share_title"))
-    explainer("ms_share_explainer")
-
-    share_df = combined_monthly[
-        (combined_monthly["month_start"] >= "2016-01-01") &
-        combined_monthly["modo"].isin(DASHBOARD_MODES)
-    ].copy()
-    _share_totals = share_df.groupby("month_start")["total_usos"].sum().rename("month_total")
-    share_df = share_df.join(_share_totals, on="month_start")
-    share_df["mode_share_pct"] = (share_df["total_usos"] / share_df["month_total"] * 100).round(2)
-    share_df["modo_label"] = share_df["modo"].map(mode_label)
-
-    fig_ms2 = px.area(
-        share_df, x="month_start", y="mode_share_pct",
-        color="modo_label",
-        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
-        labels={"mode_share_pct": t("ov_split_y"), "month_start": "", "modo_label": ""},
-        template="plotly_white",
-    )
-    if show_events:
-        fig_ms2 = add_event_annotations(fig_ms2)
-        fig_ms2 = add_fare_annotations(fig_ms2)
-    fig_ms2.update_layout(height=570, yaxis_ticksuffix="%", hovermode="x unified",
-                          yaxis=dict(range=[0, 125]))
-    st.plotly_chart(fig_ms2, width="stretch")
-
-    st.divider()
-
-    # YoY % — full series
-    st.subheader(t("ms_yoy_title"))
-    explainer("ms_yoy_explainer")
-
-    yoy_all = load_yoy()
-    yoy_all = yoy_all[
-        yoy_all["modo"].isin(DASHBOARD_MODES)
-    ].dropna(subset=["yoy_pct_change"]).copy()
-    yoy_all["modo_label"] = yoy_all["modo"].map(mode_label)
-
-    fig_ms3 = px.bar(
-        yoy_all, x="month_start", y="yoy_pct_change",
-        color="modo_label", barmode="group",
-        color_discrete_map={mode_label(m): cmap[m] for m in DASHBOARD_MODES},
-        labels={"yoy_pct_change": t("cv_yoy_y"), "month_start": "", "modo_label": ""},
-        template="plotly_white",
-    )
-    fig_ms3.add_hline(y=0, line_color="black", line_width=1)
-    if show_events:
-        fig_ms3 = add_event_annotations(fig_ms3)
-        fig_ms3 = add_fare_annotations(fig_ms3)
-    fig_ms3.update_layout(height=630, yaxis_ticksuffix="%", hovermode="x unified")
-    st.plotly_chart(fig_ms3, width="stretch")
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB 4 — RESILIENCE
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_rs:
-
-    lang        = st.session_state.lang
-    amba_labels = STRINGS[lang]["amba_labels"]
-    amba_colors = {"SI": "#2563EB", "NO": "#F59E0B"}
-
-    finding("rs_finding")
-
-    # ── Mode selector shared by both AMBA charts ───────────────────────────
-    _rs_col1, _rs_col2, _rs_col3 = st.columns([1, 1, 1])
-    with _rs_col1:
-        rs_col  = st.checkbox(mode_label("COLECTIVO"), value=True, key="rs_col")
-    with _rs_col2:
-        rs_tren = st.checkbox(mode_label("TREN"),      value=True, key="rs_tren")
-    with _rs_col3:
-        rs_sub  = st.checkbox(mode_label("SUBTE"),     value=True, key="rs_sub")
-    rs_modes = [m for m, on in [("COLECTIVO", rs_col), ("TREN", rs_tren), ("SUBTE", rs_sub)] if on]
-    if not rs_modes:
-        rs_modes = DASHBOARD_MODES
-
-    # Build amba_plot filtered by selected modes
-    _amba_raw = load_amba_by_mode()
-    _amba_raw["month_start"] = pd.to_datetime(_amba_raw["month_start"])
-    _amba_filt = _amba_raw[_amba_raw["modo"].isin(rs_modes)]
-    amba_agg = (
-        _amba_filt.groupby(["month_start", "amba"])["total"]
-        .sum()
-        .reset_index()
-    )
-    # Compute recovery index from the filtered (aggregated) data
-    _jan2020 = amba_agg[amba_agg["month_start"] == "2020-01-01"].set_index("amba")["total"]
-    amba_agg["recovery_index"] = amba_agg.apply(
-        lambda r: round(100.0 * r["total"] / _jan2020[r["amba"]], 1)
-        if r["amba"] in _jan2020.index and _jan2020[r["amba"]] > 0 else float("nan"),
-        axis=1,
-    )
-    amba_plot           = amba_agg.copy()
-    amba_plot["region"] = amba_plot["amba"].map(amba_labels)
-
-    # Dual y-axis so AMBA and Interior use independent scales
-    st.subheader(t("rs_amba_title"))
-    explainer("rs_amba_explainer")
-
-    amba_series     = amba_plot[amba_plot["amba"] == "SI"].sort_values("month_start")
-    interior_series = amba_plot[amba_plot["amba"] == "NO"].sort_values("month_start")
-
-    fig7 = go.Figure()
-    fig7.add_trace(go.Scatter(
-        x=amba_series["month_start"], y=amba_series["total"],
-        name=amba_labels["SI"],
-        line=dict(color=amba_colors["SI"], width=2),
-        yaxis="y1",
-    ))
-    fig7.add_trace(go.Scatter(
-        x=interior_series["month_start"], y=interior_series["total"],
-        name=amba_labels["NO"],
-        line=dict(color=amba_colors["NO"], width=2),
-        yaxis="y2",
-    ))
-    if show_events:
-        fig7 = add_event_annotations(fig7)
-
-    fig7.update_layout(
-        height=645,
-        hovermode="x unified",
-        template="plotly_white",
-        legend=dict(orientation="h", y=-0.15),
-        yaxis=dict(
-            title=dict(text=f"AMBA — {t('ov_series_y')}", font=dict(color=amba_colors["SI"])),
-            tickfont=dict(color=amba_colors["SI"]),
-        ),
-        yaxis2=dict(
-            title=dict(text=f"Interior — {t('ov_series_y')}", font=dict(color=amba_colors["NO"])),
-            tickfont=dict(color=amba_colors["NO"]),
-            overlaying="y",
-            side="right",
-        ),
-    )
-    st.plotly_chart(fig7, width="stretch")
-
-    st.divider()
-
-    st.subheader(t("rs_milei_title"))
-    explainer("rs_milei_explainer")
-
-    milei_df = amba_plot[amba_plot["month_start"] >= "2023-01-01"].copy()
-
-    # Compute 12-month rolling average on the full series, then filter to chart window
-    # (needs pre-2023 data to anchor the first rolling values)
-    _rolling_label = "Promedio móvil 12 meses" if lang == "es" else "12-month rolling avg"
-    for _amba_key, _region_label in amba_labels.items():
-        _full_region = amba_plot[amba_plot["amba"] == _amba_key].sort_values("month_start").copy()
-        _full_region["rolling_12"] = _full_region["recovery_index"].rolling(12, min_periods=6).mean()
-        _rolling_visible = _full_region[_full_region["month_start"] >= "2023-01-01"]
-        if not _rolling_visible.empty:
-            milei_df = milei_df  # reference kept; rolling added as separate trace below
-
-    fig8 = px.line(
-        milei_df, x="month_start", y="recovery_index",
-        color="region",
-        color_discrete_map={v: amba_colors[k] for k, v in amba_labels.items()},
-        markers=True,
-        labels={"recovery_index": "Índice (Ene 2020 = 100)" if lang == "es" else "Index (Jan 2020 = 100)",
-                "month_start": "", "region": ""},
-        template="plotly_white",
+    render_resilience(
+        show_events=show_events,
+        load_amba_by_mode=load_amba_by_mode,
+        cmap=cmap,
     )
 
-    # Overlay 12-month rolling average as dotted lines
-    for _amba_key, _region_label in amba_labels.items():
-        _full_region = amba_plot[amba_plot["amba"] == _amba_key].sort_values("month_start").copy()
-        _full_region["rolling_12"] = _full_region["recovery_index"].rolling(12, min_periods=6).mean()
-        _rolling_visible = _full_region[_full_region["month_start"] >= "2023-01-01"].dropna(subset=["rolling_12"])
-        if not _rolling_visible.empty:
-            fig8.add_scatter(
-                x=_rolling_visible["month_start"],
-                y=_rolling_visible["rolling_12"],
-                mode="lines",
-                line=dict(color=amba_colors[_amba_key], width=2.5, dash="dot"),
-                name=f"{_region_label} — {_rolling_label}",
-                showlegend=True,
-                hovertemplate=f"{_region_label} ({_rolling_label})<br>%{{x|%b %Y}}: %{{y:.1f}}<extra></extra>",
-            )
-    fig8.add_hline(y=100, line_dash="dash", line_color="grey", opacity=0.4,
-                   annotation_text="Ene 2020" if lang == "es" else "Jan 2020")
-
-    # 4d — Shade the Jan–Feb 2024 shock window and label the divergence
-    _shock_label = (
-        "Shock tarifario AMBA<br>+45% → +66%" if lang == "es"
-        else "AMBA fare shock<br>+45% → +66%"
-    )
-    fig8.add_vrect(
-        x0="2024-01-01", x1="2024-03-01",
-        fillcolor="#EF4444", opacity=0.08,
-        layer="below", line_width=0,
-    )
-    fig8.add_annotation(
-        x=pd.Timestamp("2024-02-01"), y=0.97, yref="paper",
-        text=f"<b>{_shock_label}</b>",
-        showarrow=False,
-        font=dict(size=10, color="#EF4444"),
-        xanchor="center", yanchor="top",
-        bgcolor="white", borderpad=3,
-    )
-
-    fig8 = add_fare_annotations(fig8)
-    fig8.update_layout(height=600, hovermode="x unified")
-    st.plotly_chart(fig8, width="stretch")
-
-    st.divider()
-
-    # Province histogram and heatmap moved to Overview tab
-
-
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB — FARE IMPACT (ITS causal analysis)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_its:
+    render_its(
+        load_its=load_its,
+        build_counterfactual_df=build_counterfactual_df,
+        ITS_TREATMENT=ITS_TREATMENT,
+        cmap=cmap,
+    )
 
-    st.subheader(t("rs_its_title"))
-    explainer("rs_its_explainer")
-    finding("rs_its_finding")
-
-    its_df = load_its()
-
-    if not its_df.empty:
-        from plotly.subplots import make_subplots
-
-        _its_modes = [m for m in DASHBOARD_MODES if m in its_df["mode"].values]
-        _n_its     = len(_its_modes)
-
-        _fig_its = make_subplots(
-            rows=_n_its, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.04,
-            row_titles=[mode_label(m) for m in _its_modes],
-        )
-
-        for _i, _its_mode in enumerate(_its_modes, start=1):
-            _row  = its_df[its_df["mode"] == _its_mode].iloc[0]
-            _cfdf = build_counterfactual_df(_row, _ITS_TREATMENT)
-            _pre  = _cfdf[_cfdf["post"] == 0]
-            _post = _cfdf[_cfdf["post"] == 1]
-            _col  = MODE_COLORS[_its_mode]
-            _show_legend = (_i == 1)
-
-            # Pre-treatment: faint actual
-            _fig_its.add_trace(go.Scatter(
-                x=_pre["ds"], y=_pre["actual"],
-                mode="lines", name=t("rs_its_actual"),
-                line=dict(color=_col, width=1.5),
-                opacity=0.35,
-                showlegend=_show_legend,
-                hovertemplate="%{x|%b %Y}: %{y:,.0f}<extra></extra>",
-            ), row=_i, col=1)
-
-            # Pre-treatment: fitted trend
-            _fig_its.add_trace(go.Scatter(
-                x=_pre["ds"], y=_pre["fitted"],
-                mode="lines", name="Fitted (pre)",
-                line=dict(color=_col, width=1.8, dash="dot"),
-                opacity=0.65,
-                showlegend=_show_legend,
-                hovertemplate="%{x|%b %Y}: %{y:,.0f}<extra></extra>",
-            ), row=_i, col=1)
-
-            # Post-treatment: actual
-            _fig_its.add_trace(go.Scatter(
-                x=_post["ds"], y=_post["actual"],
-                mode="lines+markers", name=t("rs_its_actual"),
-                line=dict(color=_col, width=2.5),
-                marker=dict(size=5),
-                showlegend=False,
-                hovertemplate="%{x|%b %Y}: %{y:,.0f}<extra></extra>",
-            ), row=_i, col=1)
-
-            # Counterfactual
-            _fig_its.add_trace(go.Scatter(
-                x=_post["ds"], y=_post["counterfactual"],
-                mode="lines", name=t("rs_its_cf"),
-                line=dict(color="#9CA3AF", width=2, dash="dash"),
-                showlegend=_show_legend,
-                hovertemplate="%{x|%b %Y}: %{y:,.0f}<extra></extra>",
-            ), row=_i, col=1)
-
-            # Shaded gap
-            _fig_its.add_trace(go.Scatter(
-                x=_post["ds"], y=_post["counterfactual"],
-                mode="none", showlegend=False, hoverinfo="skip",
-            ), row=_i, col=1)
-            _fig_its.add_trace(go.Scatter(
-                x=_post["ds"], y=_post["actual"],
-                mode="none", name=t("rs_its_gap"),
-                fill="tonexty",
-                fillcolor="rgba(239,68,68,0.15)",
-                line=dict(width=0),
-                showlegend=_show_legend,
-                hoverinfo="skip",
-            ), row=_i, col=1)
-
-        # Treatment line on all subplots
-        _fig_its.add_vline(
-            x=_ITS_TREATMENT.timestamp() * 1000,
-            line_dash="dash", line_color="#EF4444", line_width=1.5,
-        )
-        # Annotation on top subplot only
-        _fig_its.add_annotation(
-            x=_ITS_TREATMENT, y=1, yref="paper",
-            text=f"<b>{t('rs_its_treatment')}</b>",
-            showarrow=False, xanchor="left", yanchor="top",
-            font=dict(size=10, color="#EF4444"),
-            bgcolor="white", borderpad=2,
-        )
-
-        _its_yaxis_updates = {
-            f"yaxis{'' if i == 1 else i}": dict(tickformat=",.0f")
-            for i in range(1, _n_its + 1)
-        }
-        _fig_its.update_layout(
-            height=_n_its * 320,
-            hovermode="x unified",
-            template="plotly_white",
-            margin=dict(t=20, b=20),
-            legend=dict(orientation="h", y=-0.06),
-            **_its_yaxis_updates,
-        )
-        st.plotly_chart(_fig_its, width="stretch")
-
-        # ── Plain-language metrics — one row per mode ─────────────────────
-        # Pre-compute counterfactual dfs (already built for the chart above,
-        # but we need them here too for gap sums)
-        _its_cfdfs = {
-            m: build_counterfactual_df(
-                its_df[its_df["mode"] == m].iloc[0], _ITS_TREATMENT
-            )
-            for m in _its_modes
-        }
-
-        _header_cols = st.columns([2, 2, 2, 2])
-        _header_cols[0].markdown("&nbsp;")
-        _header_cols[1].markdown(f"**{t('rs_its_metric_lost')}**")
-        _header_cols[2].markdown(f"**{t('rs_its_metric_now')}**")
-        _header_cols[3].markdown(f"**{t('rs_its_metric_drift')}**")
-
-        for _its_mode in _its_modes:
-            _row   = its_df[its_df["mode"] == _its_mode].iloc[0]
-            _cfdf  = _its_cfdfs[_its_mode]
-            _post_cf = _cfdf[_cfdf["post"] == 1]
-
-            # 1. Cumulative trips lost (positive = fewer than expected)
-            _cum_gap   = float((_post_cf["counterfactual"] - _post_cf["actual"]).sum())
-            _cum_label = f"{abs(_cum_gap)/1e6:.0f}M"
-            _cum_delta = t("rs_its_metric_lost_sub")
-
-            # 2. Latest month gap as %
-            _latest    = _post_cf.iloc[-1]
-            _gap_pct   = (_latest["counterfactual"] - _latest["actual"]) / _latest["counterfactual"] * 100
-            _now_label = f"{abs(_gap_pct):.1f}% {'below' if _gap_pct > 0 else 'above'}"
-            if st.session_state.lang == "es":
-                _now_label = f"{abs(_gap_pct):.1f}% {'por debajo' if _gap_pct > 0 else 'por encima'}"
-            _now_delta = t("rs_its_metric_now_sub")
-
-            # 3. Post-shock drift in plain language
-            _slope     = _row["beta_slope"]
-            _sig_slope = _row["pvalue_slope"] < 0.05
-            if not _sig_slope:
-                _drift_label = t("rs_its_drift_flat")
-                _drift_delta = ""
-            elif _slope < 0:
-                _drift_label = t("rs_its_drift_falling").format(n=f"{abs(_slope)/1e6:.2f}")
-                _drift_delta = ""
-            else:
-                _drift_label = t("rs_its_drift_rising").format(n=f"{abs(_slope)/1e6:.2f}")
-                _drift_delta = ""
-
-            _cols = st.columns([2, 2, 2, 2])
-            _cols[0].markdown(f"**{mode_label(_its_mode)}**")
-            _cols[1].metric("", _cum_label, _cum_delta, delta_color="off")
-            _cols[2].metric("", _now_label, _now_delta, delta_color="off")
-            _cols[3].metric("", _drift_label, _drift_delta or None, delta_color="off")
-
-        st.caption(t("rs_its_note"))
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB 4 — ANOMALIES (STL decomposition + anomaly detection)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 with tab_an:
-
-    finding("an_finding")
-
-    st.divider()
-
-
-    st.subheader(t("an_stl_title"))
-    explainer("an_stl_explainer")
-
-    col_l, col_r = st.columns(2)
-    with col_l:
-        stl_mode = st.selectbox(
-            t("an_stl_mode"),
-            ["ALL"] + list(DASHBOARD_MODES),
-            format_func=lambda m: t("an_stl_all") if m == "ALL" else mode_label(m),
-        )
-    with col_r:
-        stl_period = st.radio(
-            t("an_stl_season"),
-            [7, 365],
-            format_func=lambda p: t("an_stl_weekly") if p == 7 else t("an_stl_annual"),
-            horizontal=True,
-        )
-
-    try:
-        with st.spinner(t("an_stl_running")):
-            _stl_result, anom, _anom_explained, _anom_unexplained = run_stl_analysis(stl_mode, stl_period, st.session_state.lang)
-
-        if _stl_result:
-            fig11 = go.Figure()
-            for key, name, color, fill in [
-                ("original", t("an_stl_observed"), "rgba(100,100,200,0.25)", True),
-                ("trend",    t("an_stl_trend"),    "#2563EB",                False),
-                ("seasonal", t("an_stl_seasonal"), "#16A34A",                False),
-                ("residual", t("an_stl_residual"), "#94a3b8",                False),
-            ]:
-                s = _stl_result[key]
-                fig11.add_scatter(
-                    x=s.index, y=s.values, name=name,
-                    line_color=color,
-                    fill="tozeroy" if fill else None,
-                    opacity=0.8 if fill else 1.0,
-                )
-            if not _anom_explained.empty:
-                fig11.add_scatter(
-                    x=_anom_explained["fecha"], y=_anom_explained["residual"],
-                    mode="markers", name=t("an_anom_explained"),
-                    marker=dict(color="#C8A000", size=9, symbol="x"),
-                    hovertemplate="<b>%{x}</b><br>%{y:,.0f}<br>%{text}",
-                    text=_anom_explained["event_label"],
-                )
-            if not _anom_unexplained.empty:
-                fig11.add_scatter(
-                    x=_anom_unexplained["fecha"], y=_anom_unexplained["residual"],
-                    mode="markers", name=t("an_anom_unexplained"),
-                    marker=dict(color="red", size=9, symbol="x"),
-                    hovertemplate="<b>%{x}</b><br>%{y:,.0f}",
-                    text=_anom_unexplained["event_label"],
-                )
-            fig11.update_layout(
-                height=660, template="plotly_white",
-                hovermode="x unified",
-                legend_title=t("an_stl_component"),
-            )
-            st.plotly_chart(fig11, width="stretch")
-
-            if not anom.empty:
-                @st.fragment
-                def _anom_table_fragment(anom, _anom_unexplained):
-                    st.subheader(f"🚨 {len(anom)} {t('an_anom_title')}")
-                    st.caption(t("an_anom_explainer"))
-                    _only_unexplained = st.checkbox(t("an_anom_only_unexplained"), value=False, key="anom_only_unexplained")
-                    _anom_table = anom if not _only_unexplained else _anom_unexplained
-                    st.dataframe(
-                        _anom_table[["fecha", "z_score", "event_label"]]
-                        .sort_values("z_score", key=abs, ascending=False)
-                        .rename(columns={
-                            "fecha":       t("an_anom_date"),
-                            "z_score":     t("an_anom_z"),
-                            "event_label": t("an_anom_event"),
-                        }),
-                        width="stretch",
-                    )
-                _anom_table_fragment(anom, _anom_unexplained)
-    except ImportError:
-        st.error("statsmodels not installed. Run: uv add statsmodels")
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TAB 5 — FORECAST
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# hex_to_rgb imported from dashboard.utils
-
+    render_anomalies(run_stl_analysis=run_stl_analysis)
 
 with tab_fc:
-
-    explainer("fc_explainer")
-
-    horizon = st.select_slider(
-        t("fc_horizon"),
-        options=[3, 6, 9, 12, 15, 18, 21, 24],
-        value=12,
+    render_forecast(
+        show_events=show_events,
+        get_conn=get_conn,
+        cmap=cmap,
     )
-
-    with st.spinner(t("fc_running")):
-        try:
-            from analytics.ml import forecast_ridership, forecast_summary
-            conn = get_conn()
-            forecasts = forecast_ridership(
-                conn,
-                modes=list(DASHBOARD_MODES),
-                horizon=horizon,
-            )
-
-            if not forecasts:
-                st.warning(
-                    "No forecast results. Check that the pipeline has run and data is loaded."
-                )
-            else:
-                st.subheader(t("fc_title").format(n=horizon))
-
-                for mode, fc in forecasts.items():
-                    hist = fc[~fc["is_forecast"]]
-                    pred = fc[fc["is_forecast"]]
-                    r, g, b = hex_to_rgb(cmap[mode])
-
-                    fig = go.Figure()
-
-                    # Confidence band
-                    fig.add_scatter(
-                        x=pd.concat([pred["ds"], pred["ds"].iloc[::-1]]),
-                        y=pd.concat([pred["yhat_upper"], pred["yhat_lower"].iloc[::-1]]),
-                        fill="toself",
-                        fillcolor=f"rgba({int(r*255)},{int(g*255)},{int(b*255)},0.15)",
-                        line=dict(width=0),
-                        showlegend=True,
-                        name=t("fc_band"),
-                    )
-
-                    # Raw actuals as faded dots — context without visual noise
-                    fig.add_scatter(
-                        x=hist["ds"], y=hist["actual"],
-                        mode="markers",
-                        marker=dict(color=cmap[mode], size=5, opacity=0.35),
-                        name=t("fc_actual"),
-                        showlegend=True,
-                    )
-
-                    # Fitted values (historical) — smooth line that leads into forecast
-                    fig.add_scatter(
-                        x=hist["ds"], y=hist["yhat"],
-                        mode="lines",
-                        line=dict(color=cmap[mode], width=2),
-                        name=t("fc_fitted"),
-                        showlegend=True,
-                    )
-
-                    # Forecast line — visually continuous from fitted
-                    # Prepend the last fitted point so there's no gap
-                    last_hist = hist.iloc[[-1]]
-                    pred_with_join = pd.concat([last_hist, pred], ignore_index=True)
-                    fig.add_scatter(
-                        x=pred_with_join["ds"], y=pred_with_join["yhat"],
-                        mode="lines+markers",
-                        line=dict(color=cmap[mode], width=2, dash="dash"),
-                        marker=dict(size=6),
-                        name=t("fc_forecast"),
-                    )
-
-                    # Vertical marker at forecast start
-                    fig.add_vline(
-                        x=hist["ds"].max().timestamp() * 1000,
-                        line_dash="dot", line_color="grey", opacity=0.6,
-                        annotation_text=(
-                            "→ predicción" if st.session_state.lang == "es" else "→ forecast"
-                        ),
-                        annotation_font_size=10,
-                    )
-
-                    if show_events:
-                        fig = add_event_annotations(fig)
-                        fig = add_fare_annotations(fig)
-
-                    fig.update_layout(
-                        height=480,
-                        template="plotly_white",
-                        title=mode_label(mode),
-                        yaxis_title=t("ov_series_y"),
-                        hovermode="x unified",
-                        legend=dict(orientation="h", y=-0.25),
-                        margin=dict(t=40, b=60),
-                    )
-                    st.plotly_chart(fig, width="stretch")
-
-                # ── Summary table ──────────────────────────────────────
-                st.divider()
-                st.subheader(t("fc_summary_title"))
-
-                summary = forecast_summary(forecasts)
-                if not summary.empty:
-                    direction_map = {
-                        "up":   t("fc_direction_up"),
-                        "down": t("fc_direction_down"),
-                        "flat": t("fc_direction_flat"),
-                    }
-                    summary["mode"]          = summary["mode"].map(mode_label)
-                    summary["direction"]     = summary["direction"].map(direction_map)
-                    summary["last_actual"]   = summary["last_actual"].apply(lambda x: f"{x/1e6:.1f}M")
-                    summary["mean_forecast"] = summary["mean_forecast"].apply(lambda x: f"{x/1e6:.1f}M")
-                    summary["pct_change"]    = summary["pct_change"].apply(lambda x: f"{x:+.1f}%")
-
-                    st.dataframe(
-                        summary.rename(columns={
-                            "mode":          t("fc_mode"),
-                            "last_actual":   t("fc_last"),
-                            "mean_forecast": t("fc_mean"),
-                            "pct_change":    t("fc_change"),
-                            "direction":     "",
-                        }),
-                        width="stretch",
-                        hide_index=True,
-                    )
-
-        except ImportError as e:
-            st.error(f"Missing dependency: {e}. Run: uv add prophet")
 
 
 st.divider()

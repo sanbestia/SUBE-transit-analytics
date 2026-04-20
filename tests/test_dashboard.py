@@ -1,5 +1,5 @@
 """
-tests/test_dashboard.py — Unit tests for dashboard/utils.py.
+tests/test_dashboard.py — Unit tests for dashboard/utils.py and dashboard/tabs/.
 
 All tests use in-memory DuckDB — no network calls, no disk I/O,
 no Streamlit session required.
@@ -671,3 +671,134 @@ class TestIngestHistorical:
         assert counts["COLECTIVO"] == 2   # both 2013 and 2016
         assert counts["SUBTE"] == 1       # only 2016
         assert counts["TREN"] == 1        # only 2016
+
+
+# ── dashboard/tabs — import smoke tests ───────────────────────────────────
+
+class TestTabModuleImports:
+    """Each tab module must be importable and expose a render() callable."""
+
+    def test_shared_importable(self):
+        from dashboard.tabs import shared
+        assert callable(getattr(shared, "t", None))
+        assert callable(getattr(shared, "mode_label", None))
+        assert callable(getattr(shared, "explainer", None))
+        assert callable(getattr(shared, "finding", None))
+        assert callable(getattr(shared, "add_event_annotations", None))
+        assert callable(getattr(shared, "add_fare_annotations", None))
+
+    def test_overview_has_render(self):
+        from dashboard.tabs import overview
+        assert callable(getattr(overview, "render", None))
+
+    def test_covid_has_render(self):
+        from dashboard.tabs import covid
+        assert callable(getattr(covid, "render", None))
+
+    def test_modal_has_render(self):
+        from dashboard.tabs import modal
+        assert callable(getattr(modal, "render", None))
+
+    def test_resilience_has_render(self):
+        from dashboard.tabs import resilience
+        assert callable(getattr(resilience, "render", None))
+
+    def test_its_has_render(self):
+        from dashboard.tabs import its
+        assert callable(getattr(its, "render", None))
+
+    def test_anomalies_has_render(self):
+        from dashboard.tabs import anomalies
+        assert callable(getattr(anomalies, "render", None))
+
+    def test_forecast_has_render(self):
+        from dashboard.tabs import forecast
+        assert callable(getattr(forecast, "render", None))
+
+
+# ── dashboard/tabs/shared.py helpers ──────────────────────────────────────
+
+@pytest.fixture()
+def lang_es(monkeypatch):
+    """Patch st.session_state so shared.py helpers read lang='es'."""
+    from unittest.mock import MagicMock
+    import streamlit
+    monkeypatch.setattr(streamlit, "session_state", MagicMock(lang="es"))
+    return "es"
+
+
+@pytest.fixture()
+def lang_en(monkeypatch):
+    """Patch st.session_state so shared.py helpers read lang='en'."""
+    from unittest.mock import MagicMock
+    import streamlit
+    monkeypatch.setattr(streamlit, "session_state", MagicMock(lang="en"))
+    return "en"
+
+
+class TestSharedHelpers:
+
+    def test_t_returns_string_es(self, lang_es):
+        from dashboard.tabs.shared import t
+        assert isinstance(t("tab_overview"), str)
+
+    def test_t_returns_string_en(self, lang_en):
+        from dashboard.tabs.shared import t
+        assert isinstance(t("tab_overview"), str)
+
+    def test_t_falls_back_to_key(self, lang_es):
+        from dashboard.tabs.shared import t
+        assert t("no_such_key_xyz") == "no_such_key_xyz"
+
+    def test_t_es_and_en_differ_for_known_key(self, monkeypatch):
+        from unittest.mock import MagicMock
+        import streamlit
+        from dashboard.tabs.shared import t
+
+        monkeypatch.setattr(streamlit, "session_state", MagicMock(lang="es"))
+        val_es = t("page_title")
+        monkeypatch.setattr(streamlit, "session_state", MagicMock(lang="en"))
+        val_en = t("page_title")
+        assert val_es != val_en
+
+    def test_mode_label_colectivo(self, lang_es):
+        from dashboard.tabs.shared import mode_label
+        label = mode_label("COLECTIVO")
+        assert isinstance(label, str)
+        assert len(label) > 0
+
+    def test_mode_label_unknown_falls_back(self, lang_es):
+        from dashboard.tabs.shared import mode_label
+        assert mode_label("UNKNOWN_MODE") == "UNKNOWN_MODE"
+
+    def test_mode_label_differs_by_lang(self, monkeypatch):
+        from unittest.mock import MagicMock
+        import streamlit
+        from dashboard.tabs.shared import mode_label
+        from dashboard.strings import MODE_LABELS
+
+        # Only test if the mode label actually differs between languages
+        if MODE_LABELS["es"].get("COLECTIVO") != MODE_LABELS["en"].get("COLECTIVO"):
+            monkeypatch.setattr(streamlit, "session_state", MagicMock(lang="es"))
+            label_es = mode_label("COLECTIVO")
+            monkeypatch.setattr(streamlit, "session_state", MagicMock(lang="en"))
+            label_en = mode_label("COLECTIVO")
+            assert label_es != label_en
+
+    def test_add_event_annotations_delegates_lang(self, lang_es):
+        from dashboard.tabs.shared import add_event_annotations
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_scatter(x=pd.date_range("2020-01-01", periods=12, freq="ME"),
+                        y=[1] * 12)
+        result = add_event_annotations(fig)
+        assert isinstance(result, go.Figure)
+
+    def test_add_fare_annotations_delegates_lang(self, lang_en):
+        from dashboard.tabs.shared import add_fare_annotations
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_scatter(x=pd.date_range("2022-01-01", periods=24, freq="ME"),
+                        y=[100] * 24)
+        result = add_fare_annotations(fig)
+        assert isinstance(result, go.Figure)

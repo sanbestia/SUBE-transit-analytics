@@ -78,10 +78,19 @@ SUBE-transit-analytics/
 │                                # autocorrelation test; outputs diagnostic plots
 │
 ├── dashboard/
-│   ├── app.py                   # Streamlit dashboard — 7 tabs, bilingual, Plotly charts
+│   ├── app.py                   # Slim orchestrator — page config, sidebar, KPIs, tab wiring
 │   ├── strings.py               # All bilingual UI strings (ES/EN)
-│   └── utils.py                 # Pure testable helpers — load_*, annotation helpers,
-│                                # load_combined_monthly(), compute_mom_pct()
+│   ├── utils.py                 # Pure testable helpers — load_*, annotation helpers,
+│   │                            # load_combined_monthly(), compute_mom_pct()
+│   └── tabs/
+│       ├── shared.py            # t(), mode_label(), explainer(), annotation wrappers
+│       ├── overview.py          # Tab — daily series, province chart, heatmap, operators
+│       ├── covid.py             # Tab — COVID-19 collapse and recovery
+│       ├── modal.py             # Tab — modal substitution and mode share
+│       ├── resilience.py        # Tab — AMBA vs Interior resilience
+│       ├── its.py               # Tab — Fare Impact (ITS causal analysis)
+│       ├── anomalies.py         # Tab — STL decomposition and anomaly detection
+│       └── forecast.py          # Tab — Prophet demand forecast
 │
 ├── data/
 │   ├── raw/                     # Downloaded CSVs (gitignored)
@@ -91,7 +100,7 @@ SUBE-transit-analytics/
 │       ├── fare_hikes.yaml      # Fare hike history 2016–2026 — used as ML regressors
 │       └── holidays.yaml        # Argentine national holidays 2020–2026 (134 entries)
 │
-├── tests/                       # pytest suite — 340+ tests, no network calls
+├── tests/                       # pytest suite — 360+ tests, no network calls
 │   ├── conftest.py
 │   ├── test_config.py
 │   ├── test_clean.py
